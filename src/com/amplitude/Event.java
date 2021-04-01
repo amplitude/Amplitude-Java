@@ -8,32 +8,32 @@ public class Event {
     public static final int MAX_STRING_LENGTH = 1000;
     public static final String TAG = "com.amplitude.Event"; //AmplitudeClient.class.getName();
 
-    private JSObject event;
+    private JSONObject event;
 
-    public Event(String eventName, JSONObject eventProps, JSONObject groups, JSONObject groupProps,
-                 JSONObject userProps, String app_version,int event_id, int session_id, String insert_id,
-                 String user_id, String device_id, boolean outOfSession, long timestamp) {
+    /*
+     * Internal constructor used to create the event object
+     * Ideally,
+     */
+    public Event(String eventName, JSONObject eventProps, JSONObject userProps,
+                 String appVersion, String sdkVersion, int eventId, int sessionId,
+                 String userId, long timestamp) {
         this.event = new JSONObject();
         try {
             this.event.put("eventName", eventProps.getString("eventName"));
             this.event.put("eventProps", (eventProps == null) ? new JSONObject() : truncate(eventProps));
 
-            this.event.put("groups", (groups == null) ? new JSONObject() : truncate(groups));
-            this.event.put("groupProps", (groups == null) ? new JSONObject() : truncate(groups));
-
-            this.event.put("outOfSession", (outOfSession == true) ?  true : false);
             this.event.put("timestamp", timestamp);
 
             this.event.put("userProps",(userProps == null) ? new JSONObject() : truncate(userProps));
-            this.event.put("user_id", replaceWithJSONNull(user_id));
-            this.event.put("device_id", replaceWithJSONNull(device_id));
+            this.event.put("user_id", replaceWithJSONNull(userId));
             this.event.put("uuid", UUID.randomUUID().toString());
-            this.event.put("session_id", (this.outOfsession) ? -1 : session_id); // session_id = -1 if outOfSession = true;
+            this.event.put("session_id", sessionId); // session_id = -1 if outOfSession = true;
 
-            this.event.put("app_version", app_version);
+            this.event.put("app_version", appVersion);
+            this.event.put("sdk_version", sdkVersion);
 
-            this.event.put("event_id", replaceWithJSONNull(event_id));
-            this.event.put("insert_id", replaceWithJSONNull(insert_id));
+            this.event.put("event_id", replaceWithJSONNull(eventId));
+            this.event.put("insert_id", replaceWithJSONNull(insertId));
 
         } catch (JSONException e) {
             logger.e(TAG, String.format(

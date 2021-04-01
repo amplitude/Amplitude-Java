@@ -1,6 +1,14 @@
 apply plugin: 'idea'
 apply plugin: 'java'
 
+buildscript {
+    repositories {
+        google()
+        jcenter()
+    }
+}
+
+
 dependencies {
-    implementation 'org.json:json:20210307'
+    implementation group: 'org.json', name: 'json', version: '20210307'
 }

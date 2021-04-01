@@ -29,3 +29,8 @@ hs_err_pid*
 .idea_modules/
 .idea/
 *.iml
+*.ipr
+*.iws
+
+# Build Files
+/build/
