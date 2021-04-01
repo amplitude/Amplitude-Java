@@ -11,7 +11,7 @@ public class Amplitude {
     public static Amplitude getInstance(String instanceName) {
         if (!instances.containsKey(instanceName)) {
             Amplitude ampInstance = new Amplitude();
-            newAmpInstance.put(instanceName, ampInstance)
+            newAmpInstance.put(instanceName, ampInstance);
         }
         else {
             return instances.get(instanceName);
