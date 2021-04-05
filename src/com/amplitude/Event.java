@@ -1,14 +1,18 @@
 package com.amplitude;
 
-import org.json.simple.JSONObject;
+import java.util.Iterator;
+import java.util.UUID;
+
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 public class Event {
-    // should move into Constants.java
-    public static final int MAX_PROPERTY_KEYS = 1024;
-    public static final int MAX_STRING_LENGTH = 1000;
+
     public static final String TAG = "com.amplitude.Event"; //AmplitudeClient.class.getName();
 
     private JSONObject event;
+    public long timestamp;
 
     /*
      * Internal constructor used to create the event object
@@ -22,6 +26,7 @@ public class Event {
             this.event.put("eventName", eventProps.getString("eventName"));
             this.event.put("eventProps", (eventProps == null) ? new JSONObject() : truncate(eventProps));
 
+            this.timestamp = timestamp;
             this.event.put("timestamp", timestamp);
 
             this.event.put("userProps",(userProps == null) ? new JSONObject() : truncate(userProps));
@@ -33,12 +38,9 @@ public class Event {
             this.event.put("sdk_version", sdkVersion);
 
             this.event.put("event_id", replaceWithJSONNull(eventId));
-            this.event.put("insert_id", replaceWithJSONNull(insertId));
 
         } catch (JSONException e) {
-            logger.e(TAG, String.format(
-                "JSON Serialization of event failed, skipping: %s", e.toString()
-            ));
+            System.out.println(String.format("JSON Serialization of event failed, skipping" + e.toString()));
         }
     }
 
@@ -54,8 +56,8 @@ public class Event {
             return new JSONObject();
         }
 
-        if (object.length() > MAX_STRING_LENGTH) {
-            logger.w(TAG, "Warning: too many properties (more than 1000), ignoring");
+        if (object.length() > Constants.MAX_STRING_LENGTH) {
+            System.out.println("Warning: too many properties (more than 1000), ignoring");
             return new JSONObject();
         }
 
@@ -73,7 +75,7 @@ public class Event {
                     object.put(key, truncate((JSONArray) value));
                 }
             } catch (JSONException e) {
-                logger.e(TAG, e.toString());
+                System.out.println(e.toString());
             }
         }
 
@@ -99,8 +101,12 @@ public class Event {
     }
 
     protected static String truncate(String value) {
-        return value.length() <= MAX_PROPERTY_KEYS ? value :
-                value.substring(0, MAX_PROPERTY_KEYS);
+        return value.length() <= Constants.MAX_PROPERTY_KEYS ? value :
+                value.substring(0, Constants.MAX_PROPERTY_KEYS);
+    }
+
+    public String toString() {
+        return this.event.toString();
     }
 
 }

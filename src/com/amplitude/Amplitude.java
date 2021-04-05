@@ -1,7 +1,11 @@
 package com.amplitude;
 
+import org.json.JSONObject;
+
+import javax.net.ssl.HttpsURLConnection;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
@@ -29,9 +33,7 @@ public class Amplitude {
             Amplitude ampInstance = new Amplitude();
             instances.put(instanceName, ampInstance);
         }
-        else {
-            return instances.get(instanceName);
-        }
+        return instances.get(instanceName);
     }
 
     public void init(String key) {
@@ -57,7 +59,7 @@ public class Amplitude {
     public void logEvent(String eventName, Event event) {
         try {
             Future<Object> futureResult = CompletableFuture.supplyAsync(() -> {
-                syncHttpCall();
+                return syncHttpCall(event);
             });
             Object value = futureResult.get(10000, TimeUnit.MILLISECONDS);
         } catch (InterruptedException e) {
@@ -77,25 +79,33 @@ public class Amplitude {
         this.userProperties = userProperties;
     }
 
-    public static Future<Object> startAsyncHttpCall() {
-        return CompletableFuture.supplyAsync(() -> syncHttpCall());
-    }
-
-    static Object syncHttpCall() {
+    private Object syncHttpCall(Event event) {
         try {
-            HttpURLConnection urlConnection =
-                    (HttpURLConnection) new URL("https://jsonplaceholder.typicode.com/posts").openConnection();
-            urlConnection.setRequestMethod("POST");
-            OutputStreamWriter out = new OutputStreamWriter(urlConnection.getOutputStream());
-                out.write("params as json");
+            JSONObject bodyJson = new JSONObject();
+            bodyJson.put("v", Constants.SDK_VERSION);
+            bodyJson.put("client", apiKey);
+            bodyJson.put("e", event.toString());
+            bodyJson.put("upload_time", event.timestamp);
 
-            try (InputStreamReader in = new InputStreamReader(urlConnection.getInputStream())) {
-                return new Object();
-            }
+            HttpsURLConnection connection =
+                    (HttpsURLConnection) new URL(Constants.API_URL).openConnection();
+            connection.setRequestMethod("POST");
+            connection.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
+            connection.setRequestProperty("Accept", "application/json");
+            connection.setRequestProperty("Authorization", "Bearer " + apiKey);
+
+            connection.setDoOutput(true);
+            OutputStream os = connection.getOutputStream();
+            byte[] input = bodyJson.toString().getBytes("UTF-8");
+            os.write(input, 0, input.length);
+
+            String stringResponse = connection.getResponseMessage();
+            System.out.println("Response!: " + stringResponse);
         } catch (IOException e) {
             e.printStackTrace();
             throw new RuntimeException(e);
         }
+        return null;
     }
 
 }
