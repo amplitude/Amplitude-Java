@@ -23,7 +23,7 @@ public class Event {
                  String userId, long timestamp) {
         this.event = new JSONObject();
         try {
-            this.event.put("eventName", eventProps.getString("eventName"));
+            this.event.put("eventName", eventName);
             this.event.put("eventProps", (eventProps == null) ? new JSONObject() : truncate(eventProps));
 
             this.timestamp = timestamp;
@@ -34,6 +34,7 @@ public class Event {
             this.event.put("uuid", UUID.randomUUID().toString());
             this.event.put("session_id", sessionId); // session_id = -1 if outOfSession = true;
 
+            this.event.put("platform", Constants.SDK_PLATFORM);
             this.event.put("app_version", appVersion);
             this.event.put("sdk_version", sdkVersion);
 
