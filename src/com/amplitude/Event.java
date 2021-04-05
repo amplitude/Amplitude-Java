@@ -8,7 +8,7 @@ public class Event {
     public static final int MAX_STRING_LENGTH = 1000;
     public static final String TAG = "com.amplitude.Event"; //AmplitudeClient.class.getName();
 
-    private JSObject event;
+    private JSONObject event;
 
     public Event(String eventName, JSONObject eventProps, JSONObject groups, JSONObject groupProps,
                  JSONObject userProps, String app_version,int event_id, int session_id, String insert_id,
