@@ -3,10 +3,7 @@ package com.amplitude;
 import org.json.JSONObject;
 
 import javax.net.ssl.HttpsURLConnection;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
-import java.io.OutputStreamWriter;
+import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -25,8 +22,8 @@ public class Amplitude {
     private String userId;
 
     private Amplitude() {
-        sessionId = 1; //TODO
-        userId = "1";
+        sessionId = 1000000; //TODO
+        userId = "100000000";
     }
 
     public static Amplitude getInstance(String instanceName) {
@@ -56,23 +53,19 @@ public class Amplitude {
     }
 
     public void logEvent(String eventName, Event event) {
-        //try {
-            /*
+        try {
             Future<Object> futureResult = CompletableFuture.supplyAsync(() -> {
                 return syncHttpCall(event);
             });
+            System.out.println("After async call 1:");
             Object value = futureResult.get(10000, TimeUnit.MILLISECONDS);
-             */
-            syncHttpCall(event);
-        //}
-        /* catch (InterruptedException e) {
+        } catch (InterruptedException e) {
             e.printStackTrace();
         } catch (ExecutionException e) {
             e.printStackTrace();
         } catch (TimeoutException e) {
             e.printStackTrace();
         }
-         */
     }
 
     public JSONObject getUserProperties() {
@@ -98,20 +91,38 @@ public class Amplitude {
 
             connection.setDoOutput(true);
 
+            String eventString = event.toString();
+            System.out.println(eventString);
+
             JSONObject bodyJson = new JSONObject();
             //bodyJson.put("v", Constants.SDK_VERSION);
             bodyJson.put("api_key", apiKey);
-            bodyJson.put("events", new String[]{}); //event == null ? "[{}]" : event.toString());
+            bodyJson.put("events", new JSONObject[]{event.getJsonObject()}); //event == null ? "[{}]" : event.toString());
             //bodyJson.put("upload_time", event.timestamp);
 
+            String bodyString = bodyJson.toString();
+
             OutputStream os = connection.getOutputStream();
-            System.out.println(bodyJson.toString());
-            byte[] input = bodyJson.toString().getBytes("UTF-8");
+            System.out.println("Body: " + bodyString);
+            byte[] input = bodyString.getBytes("UTF-8");
             os.write(input, 0, input.length);
 
             System.out.println(connection.getResponseCode());
-            String stringResponse = connection.getResponseMessage();
-            System.out.println("Response!: " + stringResponse);
+
+            InputStream inputStream;
+            if (100 <= connection.getResponseCode() && connection.getResponseCode() <= 399) {
+                inputStream = connection.getInputStream();
+            } else {
+                inputStream = connection.getErrorStream();
+            }
+            BufferedReader br = new BufferedReader(new InputStreamReader(inputStream));
+
+            StringBuilder sb = new StringBuilder();
+            String output;
+            while ((output = br.readLine()) != null) {
+                sb.append(output);
+            }
+            System.out.println("Response Apr 5th: " + sb.toString());
         } catch (IOException e) {
             e.printStackTrace();
             throw new RuntimeException(e);

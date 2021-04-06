@@ -23,13 +23,13 @@ public class Event {
                  String userId, long timestamp) {
         this.event = new JSONObject();
         try {
-            this.event.put("eventName", eventName);
-            this.event.put("eventProps", (eventProps == null) ? new JSONObject() : truncate(eventProps));
+            this.event.put("event_type", eventName);
+            this.event.put("event_properties", (eventProps == null) ? new JSONObject() : truncate(eventProps));
 
             this.timestamp = timestamp;
-            this.event.put("timestamp", timestamp);
+            this.event.put("time", timestamp);
 
-            this.event.put("userProps",(userProps == null) ? new JSONObject() : truncate(userProps));
+            this.event.put("user_properties",(userProps == null) ? new JSONObject() : truncate(userProps));
             this.event.put("user_id", replaceWithJSONNull(userId));
             this.event.put("uuid", UUID.randomUUID().toString());
             this.event.put("session_id", sessionId); // session_id = -1 if outOfSession = true;
@@ -109,5 +109,7 @@ public class Event {
     public String toString() {
         return this.event.toString();
     }
+
+    public JSONObject getJsonObject() { return event; }
 
 }
