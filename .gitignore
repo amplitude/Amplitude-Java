@@ -23,6 +23,7 @@
 hs_err_pid*
 
 .gradle/
+demo/.gradle/
 
 # IntelliJ
 /out/
