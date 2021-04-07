@@ -1,4 +1,0 @@
-com/example/amplitude/springboot/HelloController.java
- com.amplitude.demo.HelloController
-com/example/amplitude/springboot/Application.java
- com.amplitude.demo.Application
