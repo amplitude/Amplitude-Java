@@ -33,5 +33,5 @@ hs_err_pid*
 *.iws
 
 # Build Files
-/build/
+*/build/
 /bin/

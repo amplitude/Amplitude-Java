@@ -8,7 +8,7 @@ plugins {
 apply plugin: 'idea'
 apply plugin: 'java'
 
-group 'com.amplitude'
+group 'com.amplitude.demo'
 
 repositories {
     jcenter()
@@ -32,12 +32,12 @@ dependencies {
 }
 
 application {
-    mainClassName = "com.amplitude.demo/Application"
+    mainClassName = "com.amplitude.demo.Application"
 }
 
 task runWithJavaExec(type: JavaExec) {
     group = "Execution"
     description = "Run the main class with JavaExecTask"
     classpath = sourceSets.main.runtimeClasspath
-    main = "com.amplitude.Demo"
+    main = "com.amplitude.demo"
 }
