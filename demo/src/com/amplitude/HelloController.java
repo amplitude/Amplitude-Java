@@ -1,4 +1,4 @@
-package com.amplitude.demo;
+package com.amplitude;
 
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.RequestMapping;
