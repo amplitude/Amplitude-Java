@@ -20,15 +20,17 @@ repositories {
 
 idea {
     module {
-        sourceDirs += file('src')
+        sourceDirs += file('java')
     }
 }
 
-sourceSets.main.java.srcDirs = ['src']
+sourceSets.main.java.srcDirs = ['java']
 
 dependencies {
     implementation 'org.json:json:20201115'
+    //implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
     implementation 'org.springframework.boot:spring-boot-starter-web'
+    compile project(':main')
 }
 
 application {
@@ -39,5 +41,5 @@ task runWithJavaExec(type: JavaExec) {
     group = "Execution"
     description = "Run the main class with JavaExecTask"
     classpath = sourceSets.main.runtimeClasspath
-    main = "com.amplitude"
+    main = "com.amplitude.Demo"
 }

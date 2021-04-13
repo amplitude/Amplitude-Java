@@ -1,0 +1,30 @@
+plugins {
+    id 'java'
+}
+
+apply plugin: 'idea'
+apply plugin: 'java'
+
+group 'com.amplitude'
+
+repositories {
+    jcenter()
+    mavenCentral()
+    maven {
+        url "https://plugins.gradle.org/m2/"
+    }
+}
+
+idea {
+    module {
+        sourceDirs += file('java')
+    }
+}
+
+sourceSets.main.java.srcDirs = ['java']
+
+dependencies {
+    implementation 'org.json:json:20201115'
+}
+
+jar.baseName = 'Amplitude-Java'
