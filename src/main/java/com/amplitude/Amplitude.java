@@ -9,6 +9,7 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.*;
 
 public class Amplitude {
@@ -18,12 +19,14 @@ public class Amplitude {
     private String apiKey;
 
     private static int lastEventId = 1;
-    private int sessionId;
+    private long sessionId;
     private String userId;
+    private String deviceId;
 
     private Amplitude() {
-        sessionId = 1000000; //TODO
-        userId = "100000000";
+        sessionId = System.currentTimeMillis();
+        userId = String.valueOf((int) (Math.random()*1000000 + 100000));
+        deviceId = UUID.randomUUID().toString();
     }
 
     public static Amplitude getInstance(String instanceName) {
@@ -48,17 +51,18 @@ public class Amplitude {
     public void logEventWithProps(String eventName, JSONObject eventProps) {
         long time = System.currentTimeMillis();
         Event event = new Event(eventName, eventProps, userProperties, "", Constants.SDK_VERSION,
-                lastEventId, sessionId, userId, time);
-        logEvent(eventName, event);
+                lastEventId, sessionId, userId, deviceId, time);
+        lastEventId++;
+        logEvent(event);
     }
 
-    public void logEvent(String eventName, Event event) {
+    public void logEvent(Event event) {
         try {
-            Future<Object> futureResult = CompletableFuture.supplyAsync(() -> {
-                return syncHttpCall(event);
+            Future<Void> futureResult = CompletableFuture.supplyAsync(() -> {
+                syncHttpCall(event);
+                return null;
             });
-            System.out.println("After async call 1:");
-            Object value = futureResult.get(10000, TimeUnit.MILLISECONDS);
+            futureResult.get(10000, TimeUnit.MILLISECONDS);
         } catch (InterruptedException e) {
             e.printStackTrace();
         } catch (ExecutionException e) {
@@ -76,6 +80,22 @@ public class Amplitude {
         this.userProperties = userProperties;
     }
 
+    public String getUserId() {
+        return userId;
+    }
+
+    public void setUserId(String userId) {
+        this.userId = userId;
+    }
+
+    public String getDeviceId() {
+        return deviceId;
+    }
+
+    public void setDeviceId(String deviceId) {
+        this.deviceId = deviceId;
+    }
+
     /*
      * Use HTTPUrlConnection object to make async HTTP request,
      * using data from event like device, class name, event props, etc.
@@ -88,29 +108,20 @@ public class Amplitude {
             connection.setRequestProperty("Content-Type", "application/json");
             connection.setRequestProperty("Accept", "application/json");
             connection.setRequestProperty("Authorization", "Bearer " + apiKey);
-
             connection.setDoOutput(true);
 
-            String eventString = event.toString();
-            System.out.println(eventString);
-
             JSONObject bodyJson = new JSONObject();
-            //bodyJson.put("v", Constants.SDK_VERSION);
             bodyJson.put("api_key", apiKey);
             bodyJson.put("events", new JSONObject[]{event.getJsonObject()}); //event == null ? "[{}]" : event.toString());
-            //bodyJson.put("upload_time", event.timestamp);
 
             String bodyString = bodyJson.toString();
-
             OutputStream os = connection.getOutputStream();
-            System.out.println("Body: " + bodyString);
             byte[] input = bodyString.getBytes("UTF-8");
             os.write(input, 0, input.length);
 
-            System.out.println(connection.getResponseCode());
-
+            int responseCode = connection.getResponseCode();
             InputStream inputStream;
-            if (100 <= connection.getResponseCode() && connection.getResponseCode() <= 399) {
+            if (100 <= responseCode && responseCode <= 399) {
                 inputStream = connection.getInputStream();
             } else {
                 inputStream = connection.getErrorStream();
@@ -122,7 +133,10 @@ public class Amplitude {
             while ((output = br.readLine()) != null) {
                 sb.append(output);
             }
-            System.out.println("Response Apr 5th: " + sb.toString());
+
+            if (responseCode >= 400) {
+                System.err.println("Warning, received error " + responseCode + " with message: " + sb.toString());
+            }
         } catch (IOException e) {
             e.printStackTrace();
             throw new RuntimeException(e);

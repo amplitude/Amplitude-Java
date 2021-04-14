@@ -12,37 +12,32 @@ public class Event {
     public static final String TAG = "com.amplitude.Event"; //AmplitudeClient.class.getName();
 
     private JSONObject event;
-    public long timestamp;
 
     /*
      * Internal constructor used to create the event object
      * Ideally,
      */
     public Event(String eventName, JSONObject eventProps, JSONObject userProps,
-                 String appVersion, String sdkVersion, int eventId, int sessionId,
-                 String userId, long timestamp) {
+                 String appVersion, String sdkVersion, int eventId, long sessionId,
+                 String userId, String deviceId, long timestamp) throws JSONException {
         this.event = new JSONObject();
-        try {
-            this.event.put("event_type", eventName);
-            this.event.put("event_properties", (eventProps == null) ? new JSONObject() : truncate(eventProps));
 
-            this.timestamp = timestamp;
-            this.event.put("time", timestamp);
+        this.event.put("event_type", eventName);
+        this.event.put("event_properties", (eventProps == null) ? new JSONObject() : truncate(eventProps));
 
-            this.event.put("user_properties",(userProps == null) ? new JSONObject() : truncate(userProps));
-            this.event.put("user_id", replaceWithJSONNull(userId));
-            this.event.put("uuid", UUID.randomUUID().toString());
-            this.event.put("session_id", sessionId); // session_id = -1 if outOfSession = true;
+        this.event.put("time", timestamp);
 
-            this.event.put("platform", Constants.SDK_PLATFORM);
-            this.event.put("app_version", appVersion);
-            this.event.put("sdk_version", sdkVersion);
+        this.event.put("user_properties",(userProps == null) ? new JSONObject() : truncate(userProps));
+        this.event.put("user_id", replaceWithJSONNull(userId));
+        this.event.put("device_id", replaceWithJSONNull(deviceId));
+        this.event.put("uuid", UUID.randomUUID().toString());
+        this.event.put("session_id", sessionId); // session_id = -1 if outOfSession = true;
 
-            this.event.put("event_id", replaceWithJSONNull(eventId));
+        this.event.put("library", Constants.SDK_PLATFORM + "/" + Constants.SDK_VERSION);
+        this.event.put("app_version", appVersion);
+        this.event.put("sdk_version", sdkVersion);
 
-        } catch (JSONException e) {
-            System.out.println(String.format("JSON Serialization of event failed, skipping" + e.toString()));
-        }
+        this.event.put("event_id", replaceWithJSONNull(eventId));
     }
 
     /**

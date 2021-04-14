@@ -9,8 +9,8 @@ public class DemoController {
 	@RequestMapping("/")
 	public String index() {
 		Amplitude amplitude = Amplitude.getInstance("INSTANCE_NAME");
-		amplitude.init("bcfd68add3ac9532f2f0920bdee7f9e2");
-		amplitude.logEvent("Event name test");
+		amplitude.init("8e07b9d451a7d07bd33f6e9ba5870f21");
+		amplitude.logEvent("Event name test Apr 14th 3:40 PM");
 		return "Amplitude Java SDK Demo: sending test event.";
 	}
 }
