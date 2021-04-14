@@ -1,0 +1,5 @@
+rootProject.name = 'Amplitude Java SDK'
+include 'main'
+project(':main').projectDir = file('src/main')
+include 'demo'
+project(':demo').projectDir = file('src/demo')

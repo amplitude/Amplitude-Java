@@ -1,5 +1,7 @@
 plugins {
     id "application"
+    id 'org.springframework.boot' version '2.4.4'
+    id 'io.spring.dependency-management' version '1.0.11.RELEASE'
     id 'java'
 }
 
@@ -18,14 +20,16 @@ repositories {
 
 idea {
     module {
-        sourceDirs += file('src')
+        sourceDirs += file('java')
     }
 }
 
-sourceSets.main.java.srcDirs = ['src']
+sourceSets.main.java.srcDirs = ['java']
 
 dependencies {
     implementation 'org.json:json:20201115'
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    compile project(':main')
 }
 
 application {
