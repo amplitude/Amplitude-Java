@@ -25,6 +25,8 @@ sourceSets.main.java.srcDirs = ['java']
 
 dependencies {
     implementation 'org.json:json:20201115'
+    compile group: 'com.fasterxml.jackson.core', name: 'jackson-annotations', version: '2.8.8'
+    compile group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: '2.8.8'
 }
 
 jar.baseName = 'Amplitude-Java'
