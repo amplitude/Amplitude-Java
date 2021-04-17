@@ -9,35 +9,42 @@ import org.json.JSONObject;
 
 public class Event {
 
-    public static final String TAG = "com.amplitude.Event"; //AmplitudeClient.class.getName();
-
     private JSONObject event;
+
+    public Event(String eventName) {
+        this(eventName, null, null, null, null, null, null, -1, System.currentTimeMillis());
+    }
 
     /*
      * Internal constructor used to create the event object
      * Ideally,
      */
-    public Event(String eventName, JSONObject eventProps, JSONObject userProps,
-                 String appVersion, String sdkVersion, int eventId, long sessionId,
-                 String userId, String deviceId, long timestamp) throws JSONException {
-        this.event = new JSONObject();
+    public Event(String eventName, String userId, String deviceId,
+                 String platform,
+                 JSONObject eventProps, JSONObject userProps,
+                 String appVersion, long sessionId, long timestamp) {
+        try {
+            this.event = new JSONObject();
+            this.event.put("user_id", replaceWithJSONNull(userId));
+            this.event.put("device_id", replaceWithJSONNull(deviceId));
 
-        this.event.put("event_type", eventName);
-        this.event.put("event_properties", (eventProps == null) ? new JSONObject() : truncate(eventProps));
+            this.event.put("event_type", eventName);
 
-        this.event.put("time", timestamp);
+            this.event.put("event_properties", (eventProps == null) ? new JSONObject() : truncate(eventProps));
+            this.event.put("user_properties", (userProps == null) ? new JSONObject() : truncate(userProps));
 
-        this.event.put("user_properties",(userProps == null) ? new JSONObject() : truncate(userProps));
-        this.event.put("user_id", replaceWithJSONNull(userId));
-        this.event.put("device_id", replaceWithJSONNull(deviceId));
-        this.event.put("uuid", UUID.randomUUID().toString());
-        this.event.put("session_id", sessionId); // session_id = -1 if outOfSession = true;
+            this.event.put("time", timestamp);
 
-        this.event.put("library", Constants.SDK_PLATFORM + "/" + Constants.SDK_VERSION);
-        this.event.put("app_version", appVersion);
-        this.event.put("sdk_version", sdkVersion);
+            this.event.put("library", Constants.SDK_LIBRARY + "/" + Constants.SDK_VERSION);
+            this.event.put("platform", platform);
+            this.event.put("app_version", appVersion);
 
-        this.event.put("event_id", replaceWithJSONNull(eventId));
+            this.event.put("uuid", UUID.randomUUID().toString());
+            this.event.put("session_id", sessionId); // session_id = -1 if outOfSession = true;
+        } catch (JSONException e) {
+            System.err.println("Warning, JSON did not process correctly in event");
+            e.printStackTrace();
+        }
     }
 
     /**

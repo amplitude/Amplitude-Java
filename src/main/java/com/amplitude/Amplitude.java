@@ -4,35 +4,21 @@ import org.json.JSONObject;
 
 import javax.net.ssl.HttpsURLConnection;
 import java.io.*;
-import java.net.HttpURLConnection;
-import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.UUID;
 import java.util.concurrent.*;
 
 public class Amplitude {
 
-    private static Map<String, Amplitude> instances;
-    private JSONObject userProperties;
+    private static Map<String, Amplitude> instances = new HashMap<>();
     private String apiKey;
 
-    private static int lastEventId = 1;
-    private long sessionId;
-    private String userId;
-    private String deviceId;
-
     private Amplitude() {
-        sessionId = System.currentTimeMillis();
-        userId = String.valueOf((int) (Math.random()*1000000 + 100000));
-        deviceId = UUID.randomUUID().toString();
+
     }
 
-    public static Amplitude getInstance(String instanceName) {
-        if (instances == null) {
-            instances = new HashMap<>();
-        }
+    public static synchronized Amplitude getInstance(String instanceName) {
         if (!instances.containsKey(instanceName)) {
             Amplitude ampInstance = new Amplitude();
             instances.put(instanceName, ampInstance);
@@ -45,15 +31,7 @@ public class Amplitude {
     }
 
     public void logEvent(String name) {
-        logEventWithProps(name, null);
-    }
-
-    public void logEventWithProps(String eventName, JSONObject eventProps) {
-        long time = System.currentTimeMillis();
-        Event event = new Event(eventName, eventProps, userProperties, "", Constants.SDK_VERSION,
-                lastEventId, sessionId, userId, deviceId, time);
-        lastEventId++;
-        logEvent(event);
+        logEvent(new Event(name));
     }
 
     public void logEvent(Event event) {
@@ -62,7 +40,7 @@ public class Amplitude {
                 syncHttpCall(event);
                 return null;
             });
-            futureResult.get(10000, TimeUnit.MILLISECONDS);
+            futureResult.get(Constants.NETWORK_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS);
         } catch (InterruptedException e) {
             e.printStackTrace();
         } catch (ExecutionException e) {
@@ -72,42 +50,18 @@ public class Amplitude {
         }
     }
 
-    public JSONObject getUserProperties() {
-        return userProperties;
-    }
-
-    public void setUserProperties(JSONObject userProperties) {
-        this.userProperties = userProperties;
-    }
-
-    public String getUserId() {
-        return userId;
-    }
-
-    public void setUserId(String userId) {
-        this.userId = userId;
-    }
-
-    public String getDeviceId() {
-        return deviceId;
-    }
-
-    public void setDeviceId(String deviceId) {
-        this.deviceId = deviceId;
-    }
-
     /*
      * Use HTTPUrlConnection object to make async HTTP request,
      * using data from event like device, class name, event props, etc.
      */
     private Object syncHttpCall(Event event) {
+        HttpsURLConnection connection = null;
         try {
-            HttpsURLConnection connection =
-                    (HttpsURLConnection) new URL(Constants.API_URL).openConnection();
+            connection = (HttpsURLConnection) new URL(Constants.API_URL).openConnection();
             connection.setRequestMethod("POST");
             connection.setRequestProperty("Content-Type", "application/json");
             connection.setRequestProperty("Accept", "application/json");
-            connection.setRequestProperty("Authorization", "Bearer " + apiKey);
+            //connection.setRequestProperty("Authorization", "Bearer " + apiKey);
             connection.setDoOutput(true);
 
             JSONObject bodyJson = new JSONObject();
@@ -118,10 +72,12 @@ public class Amplitude {
             OutputStream os = connection.getOutputStream();
             byte[] input = bodyString.getBytes("UTF-8");
             os.write(input, 0, input.length);
+            os.close();
 
             int responseCode = connection.getResponseCode();
             InputStream inputStream;
-            if (100 <= responseCode && responseCode <= 399) {
+            if (Constants.GOOD_RES_CODE_START <= responseCode &&
+                    responseCode <= Constants.GOOD_RES_CODE_END) {
                 inputStream = connection.getInputStream();
             } else {
                 inputStream = connection.getErrorStream();
@@ -134,12 +90,22 @@ public class Amplitude {
                 sb.append(output);
             }
 
-            if (responseCode >= 400) {
+            if (responseCode >= Constants.BAD_RES_CODE_START) {
                 System.err.println("Warning, received error " + responseCode + " with message: " + sb.toString());
+            }
+            else {
+                System.out.println("Response: " + sb.toString());
             }
         } catch (IOException e) {
             e.printStackTrace();
-            throw new RuntimeException(e);
+        } finally {
+            if (connection != null) {
+                try {
+                    connection.getInputStream().close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
         }
         return null;
     }
