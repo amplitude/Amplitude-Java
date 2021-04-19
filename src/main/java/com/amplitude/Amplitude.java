@@ -12,8 +12,6 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.*;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-
 public class Amplitude {
 
     private static Map<String, Amplitude> instances;
@@ -53,9 +51,9 @@ public class Amplitude {
     public void logEventWithProps(String eventName, JSONObject eventProps) {
         long time = System.currentTimeMillis();
         Event event = new Event(eventName);
-        event.event_properties = eventProps;
-        event.device_id = deviceId;
-        event.user_id = userId;
+        event.eventProperties = eventProps;
+        event.deviceId = deviceId;
+        event.userId = userId;
         lastEventId++;
         logEvent(event);
     }
@@ -116,9 +114,7 @@ public class Amplitude {
 
             JSONObject bodyJson = new JSONObject();
             bodyJson.put("api_key", apiKey);
-            ObjectMapper mapper = new ObjectMapper();
-            String eventJsonString = mapper.writeValueAsString(event);
-            bodyJson.put("events", new JSONObject(eventJsonString)); //event == null ? "[{}]" : event.toString());
+            bodyJson.put("events", event.toJsonObject());
 
             String bodyString = bodyJson.toString();
             OutputStream os = connection.getOutputStream();

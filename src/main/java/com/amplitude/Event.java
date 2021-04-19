@@ -7,96 +7,168 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-
 public class Event {
 
     public static final String TAG = "com.amplitude.Event"; //AmplitudeClient.class.getName();
-    @JsonProperty("event_type")
-    private String event_type;
-    @JsonProperty("user_id")
-    public String user_id;
-    @JsonProperty("device_id")
-    public String device_id;
+    private String eventType;
+    public String userId;
+    public String deviceId;
 
-    @JsonProperty("time")
-    public long time;
-    @JsonProperty("loation_lat")
-    public double loation_lat;
-    @JsonProperty("location_lng")
-    public double location_lng;
+    public long timestamp;
+    public double locationLat;
+    public double locationLng;
 
-    @JsonProperty("app_version")
-    public String app_version;
-    @JsonProperty("version_name")
-    public String version_name;
-    @JsonProperty("library")
+    public String appVersion;
+    public String versionName;
     public String library;
 
-    @JsonProperty("platform")
     public String platform;
-    @JsonProperty("os_name")
-    public String os_name;
-    @JsonProperty("device_brand")
-    public String device_brand;
-    @JsonProperty("device_manufacturer")
-    public String device_manufacturer;
-    @JsonProperty("device_model")
-    public String device_model;
-    @JsonProperty("carrier")
+    public String osName;
+    public String deviceBrand;
+    public String deviceManufacturer;
+    public String deviceModel;
     public String carrier;
 
-    @JsonProperty("country")
     public String country;
-    @JsonProperty("region")
     public String region;
-    @JsonProperty("city")
     public String city;
-    @JsonProperty("dma")
     public String dma;
 
-    @JsonProperty("idfa")
     public String idfa;
-    @JsonProperty("idfv")
     public String idfv;
-    @JsonProperty("adid")
     public String adid;
-    @JsonProperty("android_id")
-    public String android_id;
+    public String androidId;
 
-    @JsonProperty("language")
     public String language;
-    @JsonProperty("ip")
     public String ip;
-    @JsonProperty("uuid")
     public String uuid;
-    @JsonProperty("event_properties")
-    public JSONObject event_properties;
-    @JsonProperty("user_properties")
-    public JSONObject user_properties;
+    public JSONObject eventProperties;
+    public JSONObject userProperties;
 
-    @JsonProperty("price")
     public double price;
-    @JsonProperty("quantity")
     public int quantity;
-    @JsonProperty("revenue")
     public double revenue;
-    @JsonProperty("productId")
     public int productId;
-    @JsonProperty("revenueType")
     public String revenueType;
 
-    @JsonProperty("event_id")
-    public int event_id;
-    @JsonProperty("session_id")
-    public int session_id;
-    @JsonProperty("insert_id")
-    public int insert_id;
+    public int eventId;
+    public int sessionId;
+    public int insertId;
 
-    @JsonProperty("groups")
     public JSONObject groups;
+    public JSONObject groupProperties;
 
-    public Event(String _eventName) {
-        this.event_type = _eventName;
+    public Event(String _eventType) {
+        this.eventType = _eventType;
     };
+
+    public JSONObject toJsonObject() {
+        JSONObject event = new JSONObject();
+        try {
+            event.put("event_type", eventType);
+            event.put("user_id", replaceWithJSONNull(userId));
+            event.put("device_id", replaceWithJSONNull(deviceId));
+            event.put("time", timestamp);
+            event.put("location_lat:", locationLat);
+            event.put("location_lng:", locationLng);
+            event.put("app_version", appVersion);
+            event.put("version_name", replaceWithJSONNull(versionName));
+            event.put("library", Constants.SDK_PLATFORM + "/" + Constants.SDK_VERSION);
+            event.put("platform", replaceWithJSONNull(platform));
+            event.put("os_name", replaceWithJSONNull(osName));
+            event.put("device_brand", replaceWithJSONNull(deviceBrand));
+            event.put("device_manufacturer", replaceWithJSONNull(deviceManufacturer));
+            event.put("device_model", replaceWithJSONNull(deviceModel));
+            event.put("carrier", replaceWithJSONNull(carrier));
+            event.put("country", replaceWithJSONNull(country));
+            event.put("region", replaceWithJSONNull(region));
+            event.put("city", replaceWithJSONNull(city));
+            event.put("dma", replaceWithJSONNull(dma));
+            event.put("idfa", replaceWithJSONNull(idfa));
+            event.put("idfv", replaceWithJSONNull(idfv));
+            event.put("adid", replaceWithJSONNull(adid));
+            event.put("android_id", replaceWithJSONNull(androidId));
+            event.put("language", replaceWithJSONNull(language));
+            event.put("ip", replaceWithJSONNull(ip));
+            event.put("uuid", UUID.randomUUID().toString());
+            event.put("event_properties", (eventProperties == null) ? new JSONObject() : truncate(eventProperties));
+            event.put("user_properties",(userProperties == null) ? new JSONObject() : truncate(userProperties));
+            event.put("price", price);
+            event.put("quantity", quantity);
+            event.put("revenue", revenue);
+            event.put("productId", productId);
+            event.put("revenueType", revenueType);
+            event.put("event_id", replaceWithJSONNull(eventId));
+            event.put("session_id", sessionId); // session_id = -1 if outOfSession = true;
+            event.put("insert_id", insertId);
+            event.put("groups", (groups == null) ? new JSONObject() : truncate(groups));
+            event.put("group_properties", (groupProperties == null) ? new JSONObject()
+                    : truncate(groupProperties));
+        } catch (JSONException e) {
+
+        }
+        return event;
+    }
+
+    /**
+    internal method
+    */
+    protected Object replaceWithJSONNull(Object obj) {
+        return obj == null ? JSONObject.NULL : obj;
+    }
+
+    protected JSONObject truncate(JSONObject object) {
+        if (object == null) {
+            return new JSONObject();
+        }
+
+        if (object.length() > Constants.MAX_STRING_LENGTH) {
+            System.out.println("Warning: too many properties (more than 1000), ignoring");
+            return new JSONObject();
+        }
+
+        Iterator<?> keys = object.keys();
+        while (keys.hasNext()) {
+            String key = (String) keys.next();
+
+            try {
+                Object value = object.get(key);
+                if (value.getClass().equals(String.class)) {
+                    object.put(key, truncate((String) value));
+                } else if (value.getClass().equals(JSONObject.class)) {
+                    object.put(key, truncate((JSONObject) value));
+                } else if (value.getClass().equals(JSONArray.class)) {
+                    object.put(key, truncate((JSONArray) value));
+                }
+            } catch (JSONException e) {
+                System.out.println(e.toString());
+            }
+        }
+
+        return object;
+    }
+
+    protected JSONArray truncate(JSONArray array) throws JSONException {
+        if (array == null) {
+            return new JSONArray();
+        }
+
+        for (int i = 0; i < array.length(); i++) {
+            Object value = array.get(i);
+            if (value.getClass().equals(String.class)) {
+                array.put(i, truncate((String) value));
+            } else if (value.getClass().equals(JSONObject.class)) {
+                array.put(i, truncate((JSONObject) value));
+            } else if (value.getClass().equals(JSONArray.class)) {
+                array.put(i, truncate((JSONArray) value));
+            }
+        }
+        return array;
+    }
+
+    protected static String truncate(String value) {
+        return value.length() <= Constants.MAX_PROPERTY_KEYS ? value :
+                value.substring(0, Constants.MAX_PROPERTY_KEYS);
+    }
+
 }
