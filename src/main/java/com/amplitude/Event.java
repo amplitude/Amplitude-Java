@@ -9,8 +9,8 @@ import org.json.JSONObject;
 
 public class Event {
 
-    public static final String TAG = "com.amplitude.Event"; //AmplitudeClient.class.getName();
-    private String eventType;
+    public static final String TAG = Event.class.getName();
+    public String eventType;
     public String userId;
     public String deviceId;
 
