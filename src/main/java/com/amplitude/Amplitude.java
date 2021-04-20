@@ -50,8 +50,10 @@ public class Amplitude {
 
     public void logEventWithProps(String eventName, JSONObject eventProps) {
         long time = System.currentTimeMillis();
-        Event event = new Event(eventName, eventProps, userProperties, "", Constants.SDK_VERSION,
-                lastEventId, sessionId, userId, deviceId, time);
+        Event event = new Event(eventName);
+        event.eventProperties = eventProps;
+        event.deviceId = deviceId;
+        event.userId = userId;
         lastEventId++;
         logEvent(event);
     }
@@ -112,7 +114,7 @@ public class Amplitude {
 
             JSONObject bodyJson = new JSONObject();
             bodyJson.put("api_key", apiKey);
-            bodyJson.put("events", new JSONObject[]{event.getJsonObject()}); //event == null ? "[{}]" : event.toString());
+            bodyJson.put("events", event.toJsonObject());
 
             String bodyString = bodyJson.toString();
             OutputStream os = connection.getOutputStream();

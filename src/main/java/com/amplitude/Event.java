@@ -9,35 +9,105 @@ import org.json.JSONObject;
 
 public class Event {
 
-    public static final String TAG = "com.amplitude.Event"; //AmplitudeClient.class.getName();
+    public static final String TAG = Event.class.getName();
+    public String eventType;
+    public String userId;
+    public String deviceId;
 
-    private JSONObject event;
+    public long timestamp;
+    public double locationLat;
+    public double locationLng;
 
-    /*
-     * Internal constructor used to create the event object
-     * Ideally,
-     */
-    public Event(String eventName, JSONObject eventProps, JSONObject userProps,
-                 String appVersion, String sdkVersion, int eventId, long sessionId,
-                 String userId, String deviceId, long timestamp) throws JSONException {
-        this.event = new JSONObject();
+    public String appVersion;
+    public String versionName;
+    public String library;
 
-        this.event.put("event_type", eventName);
-        this.event.put("event_properties", (eventProps == null) ? new JSONObject() : truncate(eventProps));
+    public String platform;
+    public String osName;
+    public String deviceBrand;
+    public String deviceManufacturer;
+    public String deviceModel;
+    public String carrier;
 
-        this.event.put("time", timestamp);
+    public String country;
+    public String region;
+    public String city;
+    public String dma;
 
-        this.event.put("user_properties",(userProps == null) ? new JSONObject() : truncate(userProps));
-        this.event.put("user_id", replaceWithJSONNull(userId));
-        this.event.put("device_id", replaceWithJSONNull(deviceId));
-        this.event.put("uuid", UUID.randomUUID().toString());
-        this.event.put("session_id", sessionId); // session_id = -1 if outOfSession = true;
+    public String idfa;
+    public String idfv;
+    public String adid;
+    public String androidId;
 
-        this.event.put("library", Constants.SDK_PLATFORM + "/" + Constants.SDK_VERSION);
-        this.event.put("app_version", appVersion);
-        this.event.put("sdk_version", sdkVersion);
+    public String language;
+    public String ip;
+    public String uuid;
+    public JSONObject eventProperties;
+    public JSONObject userProperties;
 
-        this.event.put("event_id", replaceWithJSONNull(eventId));
+    public double price;
+    public int quantity;
+    public double revenue;
+    public int productId;
+    public String revenueType;
+
+    public int eventId;
+    public int sessionId;
+    public int insertId;
+
+    public JSONObject groups;
+    public JSONObject groupProperties;
+
+    public Event(String _eventType) {
+        this.eventType = _eventType;
+    };
+
+    public JSONObject toJsonObject() {
+        JSONObject event = new JSONObject();
+        try {
+            event.put("event_type", eventType);
+            event.put("user_id", replaceWithJSONNull(userId));
+            event.put("device_id", replaceWithJSONNull(deviceId));
+            event.put("time", timestamp);
+            event.put("location_lat:", locationLat);
+            event.put("location_lng:", locationLng);
+            event.put("app_version", appVersion);
+            event.put("version_name", replaceWithJSONNull(versionName));
+            event.put("library", Constants.SDK_PLATFORM + "/" + Constants.SDK_VERSION);
+            event.put("platform", replaceWithJSONNull(platform));
+            event.put("os_name", replaceWithJSONNull(osName));
+            event.put("device_brand", replaceWithJSONNull(deviceBrand));
+            event.put("device_manufacturer", replaceWithJSONNull(deviceManufacturer));
+            event.put("device_model", replaceWithJSONNull(deviceModel));
+            event.put("carrier", replaceWithJSONNull(carrier));
+            event.put("country", replaceWithJSONNull(country));
+            event.put("region", replaceWithJSONNull(region));
+            event.put("city", replaceWithJSONNull(city));
+            event.put("dma", replaceWithJSONNull(dma));
+            event.put("idfa", replaceWithJSONNull(idfa));
+            event.put("idfv", replaceWithJSONNull(idfv));
+            event.put("adid", replaceWithJSONNull(adid));
+            event.put("android_id", replaceWithJSONNull(androidId));
+            event.put("language", replaceWithJSONNull(language));
+            event.put("ip", replaceWithJSONNull(ip));
+            event.put("uuid", UUID.randomUUID().toString());
+            event.put("event_properties", (eventProperties == null) ? new JSONObject() : truncate(eventProperties));
+            event.put("user_properties",(userProperties == null) ? new JSONObject() : truncate(userProperties));
+            event.put("price", price);
+            event.put("quantity", quantity);
+            event.put("revenue", revenue);
+            event.put("productId", productId);
+            event.put("revenueType", revenueType);
+            event.put("event_id", replaceWithJSONNull(eventId));
+            event.put("session_id", sessionId); // session_id = -1 if outOfSession = true;
+            event.put("insert_id", insertId);
+            event.put("groups", (groups == null) ? new JSONObject() : truncate(groups));
+            event.put("group_properties", (groupProperties == null) ? new JSONObject()
+                    : truncate(groupProperties));
+        } catch (JSONException e) {
+
+        }
+        return event;
     }
 
     /**
@@ -100,11 +170,5 @@ public class Event {
         return value.length() <= Constants.MAX_PROPERTY_KEYS ? value :
                 value.substring(0, Constants.MAX_PROPERTY_KEYS);
     }
-
-    public String toString() {
-        return this.event.toString();
-    }
-
-    public JSONObject getJsonObject() { return event; }
 
 }
