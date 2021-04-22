@@ -11,6 +11,8 @@ import java.util.concurrent.*;
 
 public class Amplitude {
 
+    public static final String TAG = Amplitude.class.getName();
+
     private static Map<String, Amplitude> instances = new HashMap<>();
     private String apiKey;
 
@@ -18,7 +20,7 @@ public class Amplitude {
 
     }
 
-    public static synchronized Amplitude getInstance(String instanceName) {
+    public static Amplitude getInstance(String instanceName) {
         if (!instances.containsKey(instanceName)) {
             Amplitude ampInstance = new Amplitude();
             instances.put(instanceName, ampInstance);
@@ -32,6 +34,12 @@ public class Amplitude {
 
     public void logEvent(String name) {
         logEvent(new Event(name));
+    }
+
+    public void logEvent(String eventName, JSONObject eventProps) {
+        Event event = new Event(eventName);
+        event.eventProperties = eventProps;
+        logEvent(event);
     }
 
     public void logEvent(Event event) {
@@ -56,26 +64,25 @@ public class Amplitude {
      */
     private Object syncHttpCall(Event event) {
         HttpsURLConnection connection = null;
+        InputStream inputStream = null;
         try {
             connection = (HttpsURLConnection) new URL(Constants.API_URL).openConnection();
             connection.setRequestMethod("POST");
             connection.setRequestProperty("Content-Type", "application/json");
             connection.setRequestProperty("Accept", "application/json");
-            //connection.setRequestProperty("Authorization", "Bearer " + apiKey);
             connection.setDoOutput(true);
 
             JSONObject bodyJson = new JSONObject();
             bodyJson.put("api_key", apiKey);
-            bodyJson.put("events", new JSONObject[]{event.getJsonObject()}); //event == null ? "[{}]" : event.toString());
+            bodyJson.put("events", event.toJsonObject());
 
             String bodyString = bodyJson.toString();
             OutputStream os = connection.getOutputStream();
             byte[] input = bodyString.getBytes("UTF-8");
             os.write(input, 0, input.length);
-            os.close();
+            //os.close();
 
             int responseCode = connection.getResponseCode();
-            InputStream inputStream;
             if (Constants.GOOD_RES_CODE_START <= responseCode &&
                     responseCode <= Constants.GOOD_RES_CODE_END) {
                 inputStream = connection.getInputStream();
@@ -91,19 +98,21 @@ public class Amplitude {
             }
 
             if (responseCode >= Constants.BAD_RES_CODE_START) {
-                System.err.println("Warning, received error " + responseCode + " with message: " + sb.toString());
+                AmplitudeLog.log(TAG, "Warning, received error HTTP code " + responseCode + " with message: " + sb.toString(),
+                        AmplitudeLog.LogMode.WARN);
             }
             else {
-                System.out.println("Response: " + sb.toString());
+                AmplitudeLog.log(TAG, "Successful HTTP code " + responseCode + " with message: " + sb.toString(),
+                        AmplitudeLog.LogMode.DEBUG);
             }
         } catch (IOException e) {
             e.printStackTrace();
         } finally {
-            if (connection != null) {
+            if (inputStream != null) {
                 try {
-                    connection.getInputStream().close();
+                    inputStream.close();
                 } catch (IOException e) {
-                    e.printStackTrace();
+
                 }
             }
         }
