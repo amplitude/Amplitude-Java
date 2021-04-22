@@ -2,7 +2,7 @@ package com.amplitude;
 
 public class AmplitudeLog {
 
-    private static LogMode LOG_MODE = LogMode.DEBUG;
+    private static LogMode LOG_MODE = LogMode.ERROR;
 
     public static void setLogMode(LogMode logMode) {
         AmplitudeLog.LOG_MODE = logMode;
