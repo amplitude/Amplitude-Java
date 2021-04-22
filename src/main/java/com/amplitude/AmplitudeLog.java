@@ -12,9 +12,17 @@ public class AmplitudeLog {
         log(tag, message, LogMode.DEBUG);
     }
 
+    public static void warn(String tag, String message) {
+        log(tag, message, LogMode.WARN);
+    }
+
+    public static void error(String tag, String message) {
+        log(tag, message, LogMode.ERROR);
+    }
+
     public static void log(String tag, String message, LogMode messageMode) {
-        if (messageMode.index >= LOG_MODE.index) {
-            if (messageMode.index >= LogMode.ERROR.index) {
+        if (messageMode.level >= LOG_MODE.level) {
+            if (messageMode.level >= LogMode.ERROR.level) {
                 System.err.println(tag + ": " + message);
             }
             else {
@@ -29,9 +37,9 @@ public class AmplitudeLog {
         ERROR(3),
         OFF(4);
 
-        private int index;
-        LogMode(int index) {
-            this.index = index;
+        private int level;
+        LogMode(int level) {
+            this.level = level;
         }
     }
 

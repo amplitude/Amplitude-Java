@@ -10,8 +10,7 @@ public interface Constants {
     int     MAX_PROPERTY_KEYS       = 1024;
     int     MAX_STRING_LENGTH       = 1000;
 
-    int     GOOD_RES_CODE_START     = 100;
-    int     GOOD_RES_CODE_END       = 399;
-    int     BAD_RES_CODE_START      = 400;
+    int     HTTP_STATUS_CONTINUE    = 100;
+    int     HTTP_STATUS_BAD_REQ     = 400;
 
 }

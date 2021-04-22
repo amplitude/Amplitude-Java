@@ -32,14 +32,6 @@ public class Amplitude {
         apiKey = key;
     }
 
-    public void logEvent(String name, String userId) {
-        logEvent(new Event(name, userId));
-    }
-
-    public void logEvent(String name, String userId, String deviceId) {
-        logEvent(new Event(name, userId, deviceId));
-    }
-
     public void logEvent(Event event) {
         try {
             Future<Void> futureResult = CompletableFuture.supplyAsync(() -> {
@@ -81,8 +73,8 @@ public class Amplitude {
             //os.close();
 
             int responseCode = connection.getResponseCode();
-            if (Constants.GOOD_RES_CODE_START <= responseCode &&
-                    responseCode <= Constants.GOOD_RES_CODE_END) {
+            if (Constants.HTTP_STATUS_CONTINUE <= responseCode &&
+                    responseCode < Constants.HTTP_STATUS_BAD_REQ) {
                 inputStream = connection.getInputStream();
             } else {
                 inputStream = connection.getErrorStream();
@@ -95,11 +87,10 @@ public class Amplitude {
                 sb.append(output);
             }
 
-            if (responseCode >= Constants.BAD_RES_CODE_START) {
+            if (responseCode >= Constants.HTTP_STATUS_BAD_REQ) {
                 AmplitudeLog.log(TAG, "Warning, received error HTTP code " + responseCode + " with message: " + sb.toString(),
                         AmplitudeLog.LogMode.WARN);
-            }
-            else {
+            } else {
                 AmplitudeLog.log(TAG, "Successful HTTP code " + responseCode + " with message: " + sb.toString(),
                         AmplitudeLog.LogMode.DEBUG);
             }

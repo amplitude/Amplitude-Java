@@ -29,6 +29,5 @@ dependencies {
 
 jar {
     archiveBaseName = 'Amplitude-Java'
-    archiveVersion =  '1.0.0'
+    archiveVersion = '1.0.0'
 }
-jar.baseName = 'Amplitude-Java'
