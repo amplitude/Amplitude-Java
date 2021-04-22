@@ -16,8 +16,10 @@ public class Amplitude {
     private static Map<String, Amplitude> instances = new HashMap<>();
     private String apiKey;
 
-    private Amplitude() {
+    private AmplitudeLog logger;
 
+    private Amplitude() {
+        logger = new AmplitudeLog();
     }
 
     public static Amplitude getInstance(String instanceName) {
@@ -48,12 +50,16 @@ public class Amplitude {
         }
     }
 
+    public void setLogMode(AmplitudeLog.LogMode logMode) {
+        this.logger.setLogMode(logMode);
+    }
+
     /*
      * Use HTTPUrlConnection object to make async HTTP request,
      * using data from event like device, class name, event props, etc.
      */
-    private Object syncHttpCall(Event event) {
-        HttpsURLConnection connection = null;
+    private void syncHttpCall(Event event) {
+        HttpsURLConnection connection;
         InputStream inputStream = null;
         try {
             connection = (HttpsURLConnection) new URL(Constants.API_URL).openConnection();
@@ -70,29 +76,26 @@ public class Amplitude {
             OutputStream os = connection.getOutputStream();
             byte[] input = bodyString.getBytes("UTF-8");
             os.write(input, 0, input.length);
-            //os.close();
 
             int responseCode = connection.getResponseCode();
-            if (Constants.HTTP_STATUS_CONTINUE <= responseCode &&
-                    responseCode < Constants.HTTP_STATUS_BAD_REQ) {
+            boolean isErrorCode = responseCode >= Constants.HTTP_STATUS_BAD_REQ;
+            if (!isErrorCode) {
                 inputStream = connection.getInputStream();
             } else {
                 inputStream = connection.getErrorStream();
             }
-            BufferedReader br = new BufferedReader(new InputStreamReader(inputStream));
 
+            BufferedReader br = new BufferedReader(new InputStreamReader(inputStream));
             StringBuilder sb = new StringBuilder();
             String output;
             while ((output = br.readLine()) != null) {
                 sb.append(output);
             }
 
-            if (responseCode >= Constants.HTTP_STATUS_BAD_REQ) {
-                AmplitudeLog.log(TAG, "Warning, received error HTTP code " + responseCode + " with message: " + sb.toString(),
-                        AmplitudeLog.LogMode.WARN);
+            if (!isErrorCode) {
+                logger.log(TAG, "Successful HTTP code " + responseCode + " with message: " + sb.toString());
             } else {
-                AmplitudeLog.log(TAG, "Successful HTTP code " + responseCode + " with message: " + sb.toString(),
-                        AmplitudeLog.LogMode.DEBUG);
+                logger.warn(TAG, "Warning, received error HTTP code " + responseCode + " with message: " + sb.toString());
             }
         } catch (IOException e) {
             e.printStackTrace();
@@ -105,7 +108,6 @@ public class Amplitude {
                 }
             }
         }
-        return null;
     }
 
 }

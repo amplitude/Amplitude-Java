@@ -2,26 +2,26 @@ package com.amplitude;
 
 public class AmplitudeLog {
 
-    private static LogMode LOG_MODE = LogMode.ERROR;
+    private LogMode logMode = LogMode.ERROR;
 
-    public static void setLogMode(LogMode logMode) {
-        AmplitudeLog.LOG_MODE = logMode;
+    public void setLogMode(LogMode logMode) {
+        this.logMode = logMode;
     }
 
-    public static void log(String tag, String message) {
+    public void log(String tag, String message) {
         log(tag, message, LogMode.DEBUG);
     }
 
-    public static void warn(String tag, String message) {
+    public void warn(String tag, String message) {
         log(tag, message, LogMode.WARN);
     }
 
-    public static void error(String tag, String message) {
+    public void error(String tag, String message) {
         log(tag, message, LogMode.ERROR);
     }
 
-    public static void log(String tag, String message, LogMode messageMode) {
-        if (messageMode.level >= LOG_MODE.level) {
+    public void log(String tag, String message, LogMode messageMode) {
+        if (messageMode.level >= logMode.level) {
             if (messageMode.level >= LogMode.ERROR.level) {
                 System.err.println(tag + ": " + message);
             }

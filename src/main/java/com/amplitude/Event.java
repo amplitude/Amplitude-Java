@@ -8,8 +8,6 @@ import org.json.JSONObject;
 
 public class Event {
 
-    public static final String TAG = Event.class.getName();
-
     public String eventType;
     public String userId;
     public String deviceId;
@@ -63,8 +61,7 @@ public class Event {
     public Event(String eventType, String userId, String deviceId) {
         this.eventType = eventType;
         if (userId == null && deviceId == null) {
-            AmplitudeLog.log(TAG, "Event must have one defined userId and/or deviceId",
-                    AmplitudeLog.LogMode.WARN);
+            throw new IllegalArgumentException("Event must have one defined userId and/or deviceId");
         }
         this.userId = userId;
         this.deviceId = deviceId;
@@ -112,8 +109,6 @@ public class Event {
             event.put("group_properties", (groupProperties == null) ? new JSONObject()
                     : truncate(groupProperties));
         } catch (JSONException e) {
-            AmplitudeLog.log(TAG, "Could not parse JSON object",
-                    AmplitudeLog.LogMode.WARN);
             e.printStackTrace();
         }
         return event;
@@ -131,10 +126,8 @@ public class Event {
             return new JSONObject();
         }
 
-        if (object.length() > Constants.MAX_STRING_LENGTH) {
-            AmplitudeLog.log(TAG, "Warning: too many properties (more than 1000), ignoring",
-                    AmplitudeLog.LogMode.WARN);
-            return new JSONObject();
+        if (object.length() > Constants.MAX_PROPERTY_KEYS) {
+            throw new IllegalArgumentException("Too many properties (more than " + Constants.MAX_PROPERTY_KEYS + ") in JSON");
         }
 
         Iterator<?> keys = object.keys();
@@ -151,9 +144,8 @@ public class Event {
                     object.put(key, truncate((JSONArray) value));
                 }
             } catch (JSONException e) {
-                AmplitudeLog.log(TAG, "Could not truncate JSON object",
-                        AmplitudeLog.LogMode.WARN);
-                e.printStackTrace();
+                throw new IllegalArgumentException("JSON parsing error. Too long (>" +
+                        Constants.MAX_STRING_LENGTH + " chars) or invalid JSON");
             }
         }
 
@@ -179,8 +171,8 @@ public class Event {
     }
 
     protected static String truncate(String value) {
-        return value.length() <= Constants.MAX_PROPERTY_KEYS ? value :
-                value.substring(0, Constants.MAX_PROPERTY_KEYS);
+        return value.length() <= Constants.MAX_STRING_LENGTH ? value :
+                value.substring(0, Constants.MAX_STRING_LENGTH);
     }
 
 }
