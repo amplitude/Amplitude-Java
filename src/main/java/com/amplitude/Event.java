@@ -58,9 +58,19 @@ public class Event {
     public JSONObject groups;
     public JSONObject groupProperties;
 
-    public Event(String eventType) {
+    public Event(String eventType, String userId) {
+        this(eventType, userId, null);
+    }
+
+    public Event(String eventType, String userId, String deviceId) {
         this.eventType = eventType;
-    };
+        if (userId == null && deviceId == null) {
+            AmplitudeLog.log(TAG, "Event must have one defined userId and/or deviceId",
+                    AmplitudeLog.LogMode.WARN);
+        }
+        this.userId = userId;
+        this.deviceId = deviceId;
+    }
 
     public JSONObject toJsonObject() {
         JSONObject event = new JSONObject();

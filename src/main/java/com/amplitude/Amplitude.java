@@ -32,13 +32,12 @@ public class Amplitude {
         apiKey = key;
     }
 
-    public void logEvent(String name) {
-        logEvent(new Event(name));
+    public void logEvent(String name, String userId) {
+        logEvent(new Event(name, userId));
     }
 
-    public void logEvent(String eventName, JSONObject eventProps) {
-        Event event = new Event(eventName);
-        event.eventProperties = eventProps;
+    public void logEvent(String name, String userId, String deviceId) {
+        logEvent(new Event(name, userId, deviceId));
     }
 
     public void logEvent(Event event) {
