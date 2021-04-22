@@ -39,7 +39,6 @@ public class Amplitude {
     public void logEvent(String eventName, JSONObject eventProps) {
         Event event = new Event(eventName);
         event.eventProperties = eventProps;
-        logEvent(event);
     }
 
     public void logEvent(Event event) {

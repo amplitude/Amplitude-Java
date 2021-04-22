@@ -1,7 +1,7 @@
 package com.amplitude;
 
 public interface Constants {
-
+    
     String  API_URL                 = "https://api2.amplitude.com/2/httpapi";
     long    NETWORK_TIMEOUT_MILLIS  = 10000;
     String  SDK_LIBRARY             = "amplitude-java";
