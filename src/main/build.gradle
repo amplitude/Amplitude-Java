@@ -27,4 +27,7 @@ dependencies {
     implementation 'org.json:json:20201115'
 }
 
-jar.baseName = 'Amplitude-Java'
+jar {
+    archiveBaseName = 'Amplitude-Java'
+    archiveVersion = '1.0.0'
+}

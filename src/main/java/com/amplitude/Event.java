@@ -1,7 +1,6 @@
 package com.amplitude;
 
 import java.util.Iterator;
-import java.util.UUID;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -9,7 +8,6 @@ import org.json.JSONObject;
 
 public class Event {
 
-    public static final String TAG = Event.class.getName();
     public String eventType;
     public String userId;
     public String deviceId;
@@ -20,7 +18,6 @@ public class Event {
 
     public String appVersion;
     public String versionName;
-    public String library;
 
     public String platform;
     public String osName;
@@ -41,7 +38,6 @@ public class Event {
 
     public String language;
     public String ip;
-    public String uuid;
     public JSONObject eventProperties;
     public JSONObject userProperties;
 
@@ -58,9 +54,18 @@ public class Event {
     public JSONObject groups;
     public JSONObject groupProperties;
 
-    public Event(String _eventType) {
-        this.eventType = _eventType;
-    };
+    public Event(String eventType, String userId) {
+        this(eventType, userId, null);
+    }
+
+    public Event(String eventType, String userId, String deviceId) {
+        this.eventType = eventType;
+        if (userId == null && deviceId == null) {
+            throw new IllegalArgumentException("Event must have one defined userId and/or deviceId");
+        }
+        this.userId = userId;
+        this.deviceId = deviceId;
+    }
 
     public JSONObject toJsonObject() {
         JSONObject event = new JSONObject();
@@ -69,11 +74,11 @@ public class Event {
             event.put("user_id", replaceWithJSONNull(userId));
             event.put("device_id", replaceWithJSONNull(deviceId));
             event.put("time", timestamp);
-            event.put("location_lat:", locationLat);
-            event.put("location_lng:", locationLng);
+            event.put("location_lat", locationLat);
+            event.put("location_lng", locationLng);
             event.put("app_version", appVersion);
             event.put("version_name", replaceWithJSONNull(versionName));
-            event.put("library", Constants.SDK_PLATFORM + "/" + Constants.SDK_VERSION);
+            event.put("library", Constants.SDK_LIBRARY + "/" + Constants.SDK_VERSION);
             event.put("platform", replaceWithJSONNull(platform));
             event.put("os_name", replaceWithJSONNull(osName));
             event.put("device_brand", replaceWithJSONNull(deviceBrand));
@@ -90,7 +95,6 @@ public class Event {
             event.put("android_id", replaceWithJSONNull(androidId));
             event.put("language", replaceWithJSONNull(language));
             event.put("ip", replaceWithJSONNull(ip));
-            event.put("uuid", UUID.randomUUID().toString());
             event.put("event_properties", (eventProperties == null) ? new JSONObject() : truncate(eventProperties));
             event.put("user_properties",(userProperties == null) ? new JSONObject() : truncate(userProperties));
             event.put("price", price);
@@ -105,7 +109,7 @@ public class Event {
             event.put("group_properties", (groupProperties == null) ? new JSONObject()
                     : truncate(groupProperties));
         } catch (JSONException e) {
-
+            e.printStackTrace();
         }
         return event;
     }
@@ -122,9 +126,8 @@ public class Event {
             return new JSONObject();
         }
 
-        if (object.length() > Constants.MAX_STRING_LENGTH) {
-            System.out.println("Warning: too many properties (more than 1000), ignoring");
-            return new JSONObject();
+        if (object.length() > Constants.MAX_PROPERTY_KEYS) {
+            throw new IllegalArgumentException("Too many properties (more than " + Constants.MAX_PROPERTY_KEYS + ") in JSON");
         }
 
         Iterator<?> keys = object.keys();
@@ -141,7 +144,8 @@ public class Event {
                     object.put(key, truncate((JSONArray) value));
                 }
             } catch (JSONException e) {
-                System.out.println(e.toString());
+                throw new IllegalArgumentException("JSON parsing error. Too long (>" +
+                        Constants.MAX_STRING_LENGTH + " chars) or invalid JSON");
             }
         }
 
@@ -167,8 +171,8 @@ public class Event {
     }
 
     protected static String truncate(String value) {
-        return value.length() <= Constants.MAX_PROPERTY_KEYS ? value :
-                value.substring(0, Constants.MAX_PROPERTY_KEYS);
+        return value.length() <= Constants.MAX_STRING_LENGTH ? value :
+                value.substring(0, Constants.MAX_STRING_LENGTH);
     }
 
 }
