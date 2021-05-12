@@ -1,11 +1,18 @@
 plugins {
-    id 'java'
+    id 'java-library'
+    id 'maven-publish'
+    id 'signing'
+}
+
+compileJava {
+    sourceCompatibility = '1.8'
+    targetCompatibility = '1.8'
 }
 
 apply plugin: 'idea'
-apply plugin: 'java'
 
 group 'com.amplitude'
+version '1.1.0'
 
 repositories {
     jcenter()
@@ -13,6 +20,7 @@ repositories {
     maven {
         url "https://plugins.gradle.org/m2/"
     }
+    mavenLocal()
 }
 
 idea {
@@ -27,7 +35,51 @@ dependencies {
     implementation 'org.json:json:20201115'
 }
 
-jar {
-    archiveBaseName = 'Amplitude-Java'
-    archiveVersion = '1.0.0'
+java {
+    withSourcesJar()
+    withJavadocJar()
+}
+
+// ======== For SDK Releases ========
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            artifactId = 'java-sdk'
+            from components.java
+            pom {
+                name = POM_DESCRIPTION
+                description = POM_DESCRIPTION
+                url = POM_URL
+                licenses {
+                    license {
+                        name = POM_LICENCE_NAME
+                        url = POM_LICENCE_URL
+                    }
+                }
+                developers {
+                    developer {
+                        id = POM_DEVELOPER_ID
+                        name = POM_DEVELOPER_NAME
+                        email = POM_DEVELOPER_EMAIL
+                    }
+                }
+                scm {
+                    connection = POM_SCM_CONNECTION
+                    developerConnection = POM_SCM_DEV_CONNECTION
+                    url = POM_SCM_URL
+                }
+            }
+        }
+    }
+    repositories {
+        maven {
+            name = 'mySecureRepository'
+            credentials(org.gradle.api.credentials.PasswordCredentials)
+            url = uri(RELEASE_REPOSITORY_URL)
+        }
+    }
+}
+
+signing {
+    sign publishing.publications.mavenJava
 }

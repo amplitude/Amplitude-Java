@@ -35,3 +35,7 @@ hs_err_pid*
 # Build Files
 **/build
 /bin/
+/target/
+
+# Maven
+settings.xml
