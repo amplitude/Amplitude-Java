@@ -1,4 +1,4 @@
-rootProject.name = 'Amplitude Java SDK'
+rootProject.name = 'amplitude-java-sdk'
 include 'main'
 project(':main').projectDir = file('src/main')
 include 'demo'
