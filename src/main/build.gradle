@@ -11,8 +11,8 @@ compileJava {
 
 apply plugin: 'idea'
 
-group 'com.amplitude'
-version '1.1.0'
+group ARTIFACT_GROUP
+version ARTIFACT_VERSION
 
 repositories {
     jcenter()
