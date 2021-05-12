@@ -1,6 +1,7 @@
 package com.amplitude;
 
 import java.util.Iterator;
+import java.util.UUID;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -12,7 +13,7 @@ public class Event {
     public String userId;
     public String deviceId;
 
-    public long timestamp;
+    public long timestamp = System.currentTimeMillis();
     public double locationLat;
     public double locationLng;
 
@@ -49,7 +50,7 @@ public class Event {
 
     public int eventId;
     public int sessionId;
-    public int insertId;
+    public String insertId = UUID.randomUUID().toString();
 
     public JSONObject groups;
     public JSONObject groupProperties;

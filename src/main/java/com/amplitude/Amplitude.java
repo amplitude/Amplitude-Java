@@ -1,11 +1,14 @@
 package com.amplitude;
 
+import org.json.JSONArray;
 import org.json.JSONObject;
 
 import javax.net.ssl.HttpsURLConnection;
 import java.io.*;
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.*;
 
@@ -18,8 +21,11 @@ public class Amplitude {
 
     private AmplitudeLog logger;
 
+    private List<Event> eventsBuffer;
+
     private Amplitude() {
         logger = new AmplitudeLog();
+        eventsBuffer = new ArrayList<>();
     }
 
     public static Amplitude getInstance(String instanceName) {
@@ -35,9 +41,17 @@ public class Amplitude {
     }
 
     public void logEvent(Event event) {
+        eventsBuffer.add(event);
+
+        if (eventsBuffer.size() >= Constants.DEF_EVENT_BUFFER_COUNT) {
+            batchUploadEvents();
+        }
+    }
+
+    public void batchUploadEvents() {
         try {
             Future<Void> futureResult = CompletableFuture.supplyAsync(() -> {
-                syncHttpCall(event);
+                syncHttpCallWithEventsBuffer();
                 return null;
             });
             futureResult.get(Constants.NETWORK_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS);
@@ -58,7 +72,7 @@ public class Amplitude {
      * Use HTTPUrlConnection object to make async HTTP request,
      * using data from event like device, class name, event props, etc.
      */
-    private void syncHttpCall(Event event) {
+    private void syncHttpCallWithEventsBuffer() {
         HttpsURLConnection connection;
         InputStream inputStream = null;
         try {
@@ -70,12 +84,19 @@ public class Amplitude {
 
             JSONObject bodyJson = new JSONObject();
             bodyJson.put("api_key", apiKey);
-            bodyJson.put("events", event.toJsonObject());
+
+            JSONArray eventsArr = new JSONArray();
+            for (int i = 0; i < eventsBuffer.size(); i++) {
+                eventsArr.put(i, eventsBuffer.get(i).toJsonObject());
+            }
+            bodyJson.put("events", eventsArr);
 
             String bodyString = bodyJson.toString();
             OutputStream os = connection.getOutputStream();
             byte[] input = bodyString.getBytes("UTF-8");
             os.write(input, 0, input.length);
+
+            System.err.println(bodyString);
 
             int responseCode = connection.getResponseCode();
             boolean isErrorCode = responseCode >= Constants.HTTP_STATUS_BAD_REQ;
@@ -96,6 +117,12 @@ public class Amplitude {
                 logger.log(TAG, "Successful HTTP code " + responseCode + " with message: " + sb.toString());
             } else {
                 logger.warn(TAG, "Warning, received error HTTP code " + responseCode + " with message: " + sb.toString());
+                if (responseCode >= Constants.HTTP_STATUS_MIN_RETRY && responseCode <= Constants.HTTP_STATUS_MAX_RETRY) {
+                    //Do nothing so the buffer is sent next time
+                }
+                else {
+                    eventsBuffer.clear();
+                }
             }
         } catch (IOException e) {
             e.printStackTrace();
