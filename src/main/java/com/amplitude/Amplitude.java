@@ -66,6 +66,7 @@ public class Amplitude {
 
                         }
                         flushEvents();
+                        currentlyFlushing = false;
                     });
             flushThread.start();
         }
