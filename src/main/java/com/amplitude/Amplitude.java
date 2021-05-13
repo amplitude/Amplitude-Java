@@ -6,10 +6,7 @@ import org.json.JSONObject;
 import javax.net.ssl.HttpsURLConnection;
 import java.io.*;
 import java.net.URL;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.*;
 
 public class Amplitude {
@@ -21,11 +18,17 @@ public class Amplitude {
 
     private AmplitudeLog logger;
 
-    private List<Event> eventsBuffer;
+    private Queue<Event> eventsToSend;
+    private boolean currentlyFlushing;
 
     private Amplitude() {
         logger = new AmplitudeLog();
-        eventsBuffer = new ArrayList<>();
+        eventsToSend = new ConcurrentLinkedQueue<>();
+        currentlyFlushing = false;
+    }
+
+    public static Amplitude getInstance() {
+        return getInstance("");
     }
 
     public static Amplitude getInstance(String instanceName) {
@@ -40,39 +43,72 @@ public class Amplitude {
         apiKey = key;
     }
 
-    public void logEvent(Event event) {
-        eventsBuffer.add(event);
-
-        if (eventsBuffer.size() >= Constants.DEF_EVENT_BUFFER_COUNT) {
-            batchUploadEvents();
-        }
-    }
-
-    public void batchUploadEvents() {
-        try {
-            Future<Void> futureResult = CompletableFuture.supplyAsync(() -> {
-                syncHttpCallWithEventsBuffer();
-                return null;
-            });
-            futureResult.get(Constants.NETWORK_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        } catch (ExecutionException e) {
-            e.printStackTrace();
-        } catch (TimeoutException e) {
-            e.printStackTrace();
-        }
-    }
-
     public void setLogMode(AmplitudeLog.LogMode logMode) {
         this.logger.setLogMode(logMode);
+    }
+
+    public void logEvent(Event event) {
+        List<Event> listOfOne = new ArrayList<>();
+        listOfOne.add(event);
+        logEvents(listOfOne);
+    }
+
+    public void logEvents(Collection<Event> events) {
+        eventsToSend.addAll(events);
+        batchUploadEventsIfNecessary();
+        if (!currentlyFlushing) {
+            currentlyFlushing = true;
+            Thread flushThread =
+                    new Thread(() -> {
+                        try {
+                            Thread.sleep(10000);
+                        } catch (InterruptedException e) {
+
+                        }
+                        flushEvents();
+                    });
+            flushThread.start();
+        }
+    }
+
+    private void batchUploadEventsIfNecessary() {
+        if (eventsToSend.size() >= Constants.DEF_EVENT_BUFFER_COUNT) {
+            flushEvents();
+        }
+    }
+
+    public synchronized void flushEvents() {
+        if (eventsToSend.size() > 0) {
+            List<Event> eventsInTransit = new ArrayList<>(eventsToSend);
+            eventsToSend.clear();
+            try {
+                Future<Integer> futureResult = CompletableFuture.supplyAsync(() -> {
+                    return syncHttpCallWithEventsBuffer(eventsInTransit);
+                });
+
+                int responseCode = futureResult.get(Constants.NETWORK_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS);
+                if (responseCode >= Constants.HTTP_STATUS_MIN_RETRY && responseCode <= Constants.HTTP_STATUS_MAX_RETRY) {
+                    eventsToSend.addAll(eventsInTransit);
+                } else {
+                    eventsToSend.clear();
+                }
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            } catch (ExecutionException e) {
+                e.printStackTrace();
+            } catch (TimeoutException e) {
+                e.printStackTrace();
+            }
+        }
     }
 
     /*
      * Use HTTPUrlConnection object to make async HTTP request,
      * using data from event like device, class name, event props, etc.
+     *
+     * @return The response code
      */
-    private void syncHttpCallWithEventsBuffer() {
+    private int syncHttpCallWithEventsBuffer(List<Event> events) {
         HttpsURLConnection connection;
         InputStream inputStream = null;
         try {
@@ -86,8 +122,8 @@ public class Amplitude {
             bodyJson.put("api_key", apiKey);
 
             JSONArray eventsArr = new JSONArray();
-            for (int i = 0; i < eventsBuffer.size(); i++) {
-                eventsArr.put(i, eventsBuffer.get(i).toJsonObject());
+            for (int i = 0; i < events.size(); i++) {
+                eventsArr.put(i, events.get(i).toJsonObject());
             }
             bodyJson.put("events", eventsArr);
 
@@ -96,8 +132,6 @@ public class Amplitude {
             byte[] input = bodyString.getBytes("UTF-8");
             os.write(input, 0, input.length);
 
-            System.err.println(bodyString);
-
             int responseCode = connection.getResponseCode();
             boolean isErrorCode = responseCode >= Constants.HTTP_STATUS_BAD_REQ;
             if (!isErrorCode) {
@@ -105,6 +139,9 @@ public class Amplitude {
             } else {
                 inputStream = connection.getErrorStream();
             }
+
+            System.err.println(responseCode);
+            System.err.println(bodyString);
 
             BufferedReader br = new BufferedReader(new InputStreamReader(inputStream));
             StringBuilder sb = new StringBuilder();
@@ -117,13 +154,9 @@ public class Amplitude {
                 logger.log(TAG, "Successful HTTP code " + responseCode + " with message: " + sb.toString());
             } else {
                 logger.warn(TAG, "Warning, received error HTTP code " + responseCode + " with message: " + sb.toString());
-                if (responseCode >= Constants.HTTP_STATUS_MIN_RETRY && responseCode <= Constants.HTTP_STATUS_MAX_RETRY) {
-                    //Do nothing so the buffer is sent next time
-                }
-                else {
-                    eventsBuffer.clear();
-                }
             }
+
+            return responseCode;
         } catch (IOException e) {
             e.printStackTrace();
         } finally {
@@ -134,6 +167,7 @@ public class Amplitude {
 
                 }
             }
+            return -1;
         }
     }
 
