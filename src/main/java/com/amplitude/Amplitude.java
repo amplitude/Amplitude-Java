@@ -6,7 +6,13 @@ import org.json.JSONObject;
 import javax.net.ssl.HttpsURLConnection;
 import java.io.*;
 import java.net.URL;
-import java.util.*;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.Queue;
 import java.util.concurrent.*;
 
 public class Amplitude {
@@ -61,7 +67,7 @@ public class Amplitude {
             Thread flushThread =
                     new Thread(() -> {
                         try {
-                            Thread.sleep(10000);
+                            Thread.sleep(Constants.DEF_EVENT_BUFFER_TIME);
                         } catch (InterruptedException e) {
 
                         }
@@ -93,11 +99,9 @@ public class Amplitude {
                 } else {
                     eventsToSend.clear();
                 }
-            } catch (InterruptedException e) {
+            } catch (InterruptedException | TimeoutException e) {
                 e.printStackTrace();
             } catch (ExecutionException e) {
-                e.printStackTrace();
-            } catch (TimeoutException e) {
                 e.printStackTrace();
             }
         }
@@ -140,9 +144,6 @@ public class Amplitude {
             } else {
                 inputStream = connection.getErrorStream();
             }
-
-            System.err.println(responseCode);
-            System.err.println(bodyString);
 
             BufferedReader br = new BufferedReader(new InputStreamReader(inputStream));
             StringBuilder sb = new StringBuilder();
