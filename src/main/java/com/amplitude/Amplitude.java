@@ -29,12 +29,12 @@ public class Amplitude {
     private AmplitudeLog logger;
 
     private Queue<Event> eventsToSend;
-    private boolean currentlyFlushing;
+    private boolean aboutToStartFlushing;
 
     private Amplitude() {
         logger = new AmplitudeLog();
         eventsToSend = new ConcurrentLinkedQueue<>();
-        currentlyFlushing = false;
+        aboutToStartFlushing = false;
     }
 
     public static Amplitude getInstance() {
@@ -65,9 +65,17 @@ public class Amplitude {
 
     public void logEvents(Collection<Event> events) {
         eventsToSend.addAll(events);
-        batchUploadEventsIfNecessary();
-        if (!currentlyFlushing) {
-            currentlyFlushing = true;
+        if (eventsToSend.size() >= Constants.DEF_EVENT_BUFFER_COUNT) {
+            flushEvents();
+        }
+        else {
+            tryToFlushEventsIfNotFlushing();
+        }
+    }
+
+    private void tryToFlushEventsIfNotFlushing() {
+        if (!aboutToStartFlushing) {
+            aboutToStartFlushing = true;
             Thread flushThread =
                     new Thread(() -> {
                         try {
@@ -76,15 +84,9 @@ public class Amplitude {
 
                         }
                         flushEvents();
-                        currentlyFlushing = false;
+                        aboutToStartFlushing = false;
                     });
             flushThread.start();
-        }
-    }
-
-    private void batchUploadEventsIfNecessary() {
-        if (eventsToSend.size() >= Constants.DEF_EVENT_BUFFER_COUNT) {
-            flushEvents();
         }
     }
 
@@ -100,6 +102,7 @@ public class Amplitude {
                 int responseCode = futureResult.get(Constants.NETWORK_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS);
                 if (responseCode >= Constants.HTTP_STATUS_MIN_RETRY && responseCode <= Constants.HTTP_STATUS_MAX_RETRY) {
                     eventsToSend.addAll(eventsInTransit);
+                    tryToFlushEventsIfNotFlushing();
                 } else {
                     eventsToSend.clear();
                 }
