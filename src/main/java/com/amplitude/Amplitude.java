@@ -65,10 +65,9 @@ public class Amplitude {
 
     public void logEvents(Collection<Event> events) {
         eventsToSend.addAll(events);
-        if (eventsToSend.size() >= Constants.DEF_EVENT_BUFFER_COUNT) {
+        if (eventsToSend.size() >= Constants.EVENT_BUF_COUNT) {
             flushEvents();
-        }
-        else {
+        } else {
             tryToFlushEventsIfNotFlushing();
         }
     }
@@ -79,7 +78,7 @@ public class Amplitude {
             Thread flushThread =
                     new Thread(() -> {
                         try {
-                            Thread.sleep(Constants.DEF_EVENT_BUFFER_TIME);
+                            Thread.sleep(Constants.EVENT_BUF_TIME_MILLIS);
                         } catch (InterruptedException e) {
 
                         }
@@ -103,8 +102,6 @@ public class Amplitude {
                 if (responseCode >= Constants.HTTP_STATUS_MIN_RETRY && responseCode <= Constants.HTTP_STATUS_MAX_RETRY) {
                     eventsToSend.addAll(eventsInTransit);
                     tryToFlushEventsIfNotFlushing();
-                } else {
-                    eventsToSend.clear();
                 }
             } catch (InterruptedException | TimeoutException e) {
                 e.printStackTrace();

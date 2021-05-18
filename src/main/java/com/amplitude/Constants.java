@@ -15,7 +15,7 @@ public interface Constants {
     int     HTTP_STATUS_MIN_RETRY   = 500;
     int     HTTP_STATUS_MAX_RETRY   = 504;
 
-    int     DEF_EVENT_BUFFER_COUNT  = 10;
-    int     DEF_EVENT_BUFFER_TIME   = 10000;
+    int     EVENT_BUF_COUNT         = 10;
+    int     EVENT_BUF_TIME_MILLIS   = 10000;
 
 }
