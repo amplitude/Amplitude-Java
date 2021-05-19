@@ -58,19 +58,11 @@ public class Amplitude {
     }
 
     public void logEvent(Event event) {
-        List<Event> listOfOne = new ArrayList<>();
-        listOfOne.add(event);
-        logEvents(listOfOne);
-    }
-
-    public void logEvents(Collection<Event> events) {
-        for (Event event: events) {
-            eventsToSend.add(event);
-            if (eventsToSend.size() >= Constants.EVENT_BUF_COUNT) {
-                flushEvents();
-            } else {
-                tryToFlushEventsIfNotFlushing();
-            }
+        eventsToSend.add(event);
+        if (eventsToSend.size() >= Constants.EVENT_BUF_COUNT) {
+            flushEvents();
+        } else {
+            tryToFlushEventsIfNotFlushing();
         }
     }
 
