@@ -64,11 +64,13 @@ public class Amplitude {
     }
 
     public void logEvents(Collection<Event> events) {
-        eventsToSend.addAll(events);
-        if (eventsToSend.size() >= Constants.EVENT_BUF_COUNT) {
-            flushEvents();
-        } else {
-            tryToFlushEventsIfNotFlushing();
+        for (Event event: events) {
+            eventsToSend.add(event);
+            if (eventsToSend.size() >= Constants.EVENT_BUF_COUNT) {
+                flushEvents();
+            } else {
+                tryToFlushEventsIfNotFlushing();
+            }
         }
     }
 
