@@ -97,16 +97,15 @@ public class Amplitude {
                 Future<Integer> futureResult = CompletableFuture.supplyAsync(() -> {
                     return syncHttpCallWithEventsBuffer(eventsInTransit);
                 });
-
                 int responseCode = futureResult.get(Constants.NETWORK_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS);
                 if (responseCode >= Constants.HTTP_STATUS_MIN_RETRY && responseCode <= Constants.HTTP_STATUS_MAX_RETRY) {
                     eventsToSend.addAll(eventsInTransit);
                     tryToFlushEventsIfNotFlushing();
                 }
             } catch (InterruptedException | TimeoutException e) {
-                e.printStackTrace();
+                tryToFlushEventsIfNotFlushing();
             } catch (ExecutionException e) {
-                e.printStackTrace();
+                tryToFlushEventsIfNotFlushing();
             }
         }
     }
@@ -120,6 +119,7 @@ public class Amplitude {
     private int syncHttpCallWithEventsBuffer(List<Event> events) {
         HttpsURLConnection connection;
         InputStream inputStream = null;
+        int responseCode = 500;
         try {
             connection = (HttpsURLConnection) new URL(Constants.API_URL).openConnection();
             connection.setRequestMethod("POST");
@@ -141,7 +141,7 @@ public class Amplitude {
             byte[] input = bodyString.getBytes("UTF-8");
             os.write(input, 0, input.length);
 
-            int responseCode = connection.getResponseCode();
+            responseCode = connection.getResponseCode();
             boolean isErrorCode = responseCode >= Constants.HTTP_STATUS_BAD_REQ;
             if (!isErrorCode) {
                 inputStream = connection.getInputStream();
@@ -161,10 +161,8 @@ public class Amplitude {
             } else {
                 logger.warn(TAG, "Warning, received error HTTP code " + responseCode + " with message: " + sb.toString());
             }
-
-            return responseCode;
-        } catch (IOException e) {
-            e.printStackTrace();
+        } catch (IOException e) { //This also handles UnknownHostException, when the SDK has no internet
+            responseCode = Constants.HTTP_STATUS_MIN_RETRY;
         } finally {
             if (inputStream != null) {
                 try {
@@ -173,7 +171,7 @@ public class Amplitude {
 
                 }
             }
-            return -1;
+            return responseCode;
         }
     }
 
