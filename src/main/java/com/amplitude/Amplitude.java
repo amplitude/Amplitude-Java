@@ -113,6 +113,7 @@ public class Amplitude {
             connection.setRequestMethod("POST");
             connection.setRequestProperty("Content-Type", "application/json");
             connection.setRequestProperty("Accept", "application/json");
+            connection.setConnectTimeout(Constants.NETWORK_TIMEOUT_MILLIS);
             connection.setDoOutput(true);
 
             JSONObject bodyJson = new JSONObject();
@@ -149,7 +150,9 @@ public class Amplitude {
             } else {
                 logger.warn(TAG, "Warning, received error HTTP code " + responseCode + " with message: " + sb.toString());
             }
-        } catch (IOException e) { //This also handles UnknownHostException, when the SDK has no internet
+        } catch (IOException e) {
+            //This handles UnknownHostException, when the SDK has no internet.
+            //Also SocketTimeoutException, when the HTTP request times out.
             responseCode = Constants.HTTP_STATUS_MIN_RETRY;
         } finally {
             if (inputStream != null) {
