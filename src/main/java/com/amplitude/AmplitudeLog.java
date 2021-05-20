@@ -24,8 +24,7 @@ public class AmplitudeLog {
         if (messageMode.level >= logMode.level) {
             if (messageMode.level >= LogMode.ERROR.level) {
                 System.err.println(tag + ": " + message);
-            }
-            else {
+            } else {
                 System.out.println(tag + ": " + message);
             }
         }

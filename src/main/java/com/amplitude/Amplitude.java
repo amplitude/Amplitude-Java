@@ -1,12 +1,22 @@
 package com.amplitude;
 
+import org.json.JSONArray;
 import org.json.JSONObject;
 
 import javax.net.ssl.HttpsURLConnection;
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.net.URL;
-import java.util.HashMap;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
 import java.util.Map;
+import java.util.HashMap;
+import java.util.Queue;
 import java.util.concurrent.*;
 
 public class Amplitude {
@@ -18,8 +28,17 @@ public class Amplitude {
 
     private AmplitudeLog logger;
 
+    private Queue<Event> eventsToSend;
+    private boolean aboutToStartFlushing;
+
     private Amplitude() {
         logger = new AmplitudeLog();
+        eventsToSend = new ConcurrentLinkedQueue<>();
+        aboutToStartFlushing = false;
+    }
+
+    public static Amplitude getInstance() {
+        return getInstance("");
     }
 
     public static Amplitude getInstance(String instanceName) {
@@ -34,50 +53,85 @@ public class Amplitude {
         apiKey = key;
     }
 
+    public void setLogMode(AmplitudeLog.LogMode logMode) {
+        this.logger.setLogMode(logMode);
+    }
+
     public void logEvent(Event event) {
-        try {
-            Future<Void> futureResult = CompletableFuture.supplyAsync(() -> {
-                syncHttpCall(event);
-                return null;
-            });
-            futureResult.get(Constants.NETWORK_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        } catch (ExecutionException e) {
-            e.printStackTrace();
-        } catch (TimeoutException e) {
-            e.printStackTrace();
+        eventsToSend.add(event);
+        if (eventsToSend.size() >= Constants.EVENT_BUF_COUNT) {
+            flushEvents();
+        } else {
+            tryToFlushEventsIfNotFlushing();
         }
     }
 
-    public void setLogMode(AmplitudeLog.LogMode logMode) {
-        this.logger.setLogMode(logMode);
+    private void tryToFlushEventsIfNotFlushing() {
+        if (!aboutToStartFlushing) {
+            aboutToStartFlushing = true;
+            Thread flushThread =
+                    new Thread(() -> {
+                        try {
+                            Thread.sleep(Constants.EVENT_BUF_TIME_MILLIS);
+                        } catch (InterruptedException e) {
+
+                        }
+                        flushEvents();
+                        aboutToStartFlushing = false;
+                    });
+            flushThread.start();
+        }
+    }
+
+    public synchronized void flushEvents() {
+        if (eventsToSend.size() > 0) {
+            List<Event> eventsInTransit = new ArrayList<>(eventsToSend);
+            eventsToSend.clear();
+            CompletableFuture.supplyAsync(() -> {
+                int responseCode = syncHttpCallWithEventsBuffer(eventsInTransit);
+                if (responseCode >= Constants.HTTP_STATUS_MIN_RETRY && responseCode <= Constants.HTTP_STATUS_MAX_RETRY) {
+                    eventsToSend.addAll(eventsInTransit);
+                    tryToFlushEventsIfNotFlushing();
+                }
+                return null;
+            });
+        }
     }
 
     /*
      * Use HTTPUrlConnection object to make async HTTP request,
      * using data from event like device, class name, event props, etc.
+     *
+     * @return The response code
      */
-    private void syncHttpCall(Event event) {
+    private int syncHttpCallWithEventsBuffer(List<Event> events) {
         HttpsURLConnection connection;
         InputStream inputStream = null;
+        int responseCode = 500;
         try {
             connection = (HttpsURLConnection) new URL(Constants.API_URL).openConnection();
             connection.setRequestMethod("POST");
             connection.setRequestProperty("Content-Type", "application/json");
             connection.setRequestProperty("Accept", "application/json");
+            connection.setConnectTimeout(Constants.NETWORK_TIMEOUT_MILLIS);
+            connection.setReadTimeout(Constants.NETWORK_TIMEOUT_MILLIS);
             connection.setDoOutput(true);
 
             JSONObject bodyJson = new JSONObject();
             bodyJson.put("api_key", apiKey);
-            bodyJson.put("events", event.toJsonObject());
+
+            JSONArray eventsArr = new JSONArray();
+            for (int i = 0; i < events.size(); i++) {
+                eventsArr.put(i, events.get(i).toJsonObject());
+            }
+            bodyJson.put("events", eventsArr);
 
             String bodyString = bodyJson.toString();
             OutputStream os = connection.getOutputStream();
             byte[] input = bodyString.getBytes("UTF-8");
             os.write(input, 0, input.length);
 
-            int responseCode = connection.getResponseCode();
+            responseCode = connection.getResponseCode();
             boolean isErrorCode = responseCode >= Constants.HTTP_STATUS_BAD_REQ;
             if (!isErrorCode) {
                 inputStream = connection.getInputStream();
@@ -98,7 +152,9 @@ public class Amplitude {
                 logger.warn(TAG, "Warning, received error HTTP code " + responseCode + " with message: " + sb.toString());
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            //This handles UnknownHostException, when the SDK has no internet.
+            //Also SocketTimeoutException, when the HTTP request times out.
+            responseCode = Constants.HTTP_STATUS_MIN_RETRY;
         } finally {
             if (inputStream != null) {
                 try {
@@ -107,6 +163,7 @@ public class Amplitude {
 
                 }
             }
+            return responseCode;
         }
     }
 
