@@ -87,20 +87,14 @@ public class Amplitude {
         if (eventsToSend.size() > 0) {
             List<Event> eventsInTransit = new ArrayList<>(eventsToSend);
             eventsToSend.clear();
-            try {
-                Future<Integer> futureResult = CompletableFuture.supplyAsync(() -> {
-                    return syncHttpCallWithEventsBuffer(eventsInTransit);
-                });
-                int responseCode = futureResult.get(Constants.NETWORK_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS);
+            CompletableFuture.supplyAsync(() -> {
+                int responseCode = syncHttpCallWithEventsBuffer(eventsInTransit);
                 if (responseCode >= Constants.HTTP_STATUS_MIN_RETRY && responseCode <= Constants.HTTP_STATUS_MAX_RETRY) {
                     eventsToSend.addAll(eventsInTransit);
                     tryToFlushEventsIfNotFlushing();
                 }
-            } catch (InterruptedException | TimeoutException e) {
-                tryToFlushEventsIfNotFlushing();
-            } catch (ExecutionException e) {
-                tryToFlushEventsIfNotFlushing();
-            }
+                return null;
+            });
         }
     }
 
