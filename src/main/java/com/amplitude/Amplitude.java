@@ -114,6 +114,7 @@ public class Amplitude {
             connection.setRequestProperty("Content-Type", "application/json");
             connection.setRequestProperty("Accept", "application/json");
             connection.setConnectTimeout(Constants.NETWORK_TIMEOUT_MILLIS);
+            connection.setReadTimeout(Constants.NETWORK_TIMEOUT_MILLIS);
             connection.setDoOutput(true);
 
             JSONObject bodyJson = new JSONObject();
