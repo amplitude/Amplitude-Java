@@ -88,7 +88,9 @@ public class Amplitude {
             List<Event> eventsInTransit = new ArrayList<>(eventsToSend);
             eventsToSend.clear();
             CompletableFuture.supplyAsync(() -> {
-                int responseCode = syncHttpCallWithEventsBuffer(eventsInTransit);
+                Response response = HttpCall.syncHttpCallWithEventsBuffer(eventsInTransit, apiKey);
+                int responseCode = response.code;
+                //System.out.println(responseCode);
                 if (responseCode >= Constants.HTTP_STATUS_MIN_RETRY && responseCode <= Constants.HTTP_STATUS_MAX_RETRY) {
                     eventsToSend.addAll(eventsInTransit);
                     tryToFlushEventsIfNotFlushing();
@@ -98,73 +100,5 @@ public class Amplitude {
         }
     }
 
-    /*
-     * Use HTTPUrlConnection object to make async HTTP request,
-     * using data from event like device, class name, event props, etc.
-     *
-     * @return The response code
-     */
-    private int syncHttpCallWithEventsBuffer(List<Event> events) {
-        HttpsURLConnection connection;
-        InputStream inputStream = null;
-        int responseCode = 500;
-        try {
-            connection = (HttpsURLConnection) new URL(Constants.API_URL).openConnection();
-            connection.setRequestMethod("POST");
-            connection.setRequestProperty("Content-Type", "application/json");
-            connection.setRequestProperty("Accept", "application/json");
-            connection.setConnectTimeout(Constants.NETWORK_TIMEOUT_MILLIS);
-            connection.setReadTimeout(Constants.NETWORK_TIMEOUT_MILLIS);
-            connection.setDoOutput(true);
-
-            JSONObject bodyJson = new JSONObject();
-            bodyJson.put("api_key", apiKey);
-
-            JSONArray eventsArr = new JSONArray();
-            for (int i = 0; i < events.size(); i++) {
-                eventsArr.put(i, events.get(i).toJsonObject());
-            }
-            bodyJson.put("events", eventsArr);
-
-            String bodyString = bodyJson.toString();
-            OutputStream os = connection.getOutputStream();
-            byte[] input = bodyString.getBytes("UTF-8");
-            os.write(input, 0, input.length);
-
-            responseCode = connection.getResponseCode();
-            boolean isErrorCode = responseCode >= Constants.HTTP_STATUS_BAD_REQ;
-            if (!isErrorCode) {
-                inputStream = connection.getInputStream();
-            } else {
-                inputStream = connection.getErrorStream();
-            }
-
-            BufferedReader br = new BufferedReader(new InputStreamReader(inputStream));
-            StringBuilder sb = new StringBuilder();
-            String output;
-            while ((output = br.readLine()) != null) {
-                sb.append(output);
-            }
-
-            if (!isErrorCode) {
-                logger.log(TAG, "Successful HTTP code " + responseCode + " with message: " + sb.toString());
-            } else {
-                logger.warn(TAG, "Warning, received error HTTP code " + responseCode + " with message: " + sb.toString());
-            }
-        } catch (IOException e) {
-            //This handles UnknownHostException, when the SDK has no internet.
-            //Also SocketTimeoutException, when the HTTP request times out.
-            responseCode = Constants.HTTP_STATUS_MIN_RETRY;
-        } finally {
-            if (inputStream != null) {
-                try {
-                    inputStream.close();
-                } catch (IOException e) {
-
-                }
-            }
-            return responseCode;
-        }
-    }
 
 }
