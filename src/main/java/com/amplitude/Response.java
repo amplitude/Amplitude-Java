@@ -56,6 +56,7 @@ public class Response {
             res.RateLimitBody.put("throttledEvents", convertJSONArrayToIntArray(json, "throttled_events"));
         } else if (status == Status.SYSTEM_ERROR) {
             res.error = json.getString("error");
+            res.code = 0;
         }
         return res;
     }
@@ -100,6 +101,6 @@ public class Response {
         if (code >= 500) {
             return Status.FAILED;
         }
-        return Status.UNKNOW;
+        return Status.UNKNOWN;
     }
 }

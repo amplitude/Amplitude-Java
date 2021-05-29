@@ -2,7 +2,7 @@ package com.amplitude;
 
 public enum Status {
     /** The status could not be determined. */
-    UNKNOW,
+    UNKNOWN,
     /** The event was skipped due to configuration or callbacks. */
     SKIPPED,
     /** The event was sent successfully. */

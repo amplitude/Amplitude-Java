@@ -12,10 +12,13 @@ public interface Constants {
 
     int     HTTP_STATUS_BAD_REQ     = 400;
 
-    int     HTTP_STATUS_MIN_RETRY   = 500;
-    int     HTTP_STATUS_MAX_RETRY   = 504;
+    //int     HTTP_STATUS_MIN_RETRY   = 500;
+    //int     HTTP_STATUS_MAX_RETRY   = 504;
 
     int     EVENT_BUF_COUNT         = 10;
     int     EVENT_BUF_TIME_MILLIS   = 10000;
+
+    int[] retryTimeouts =  {100, 100, 200, 200, 400, 400, 800, 800, 1600, 1600, 3200, 3200};
+    int     MAX_CACHED_EVENTS = 16000;
 
 }

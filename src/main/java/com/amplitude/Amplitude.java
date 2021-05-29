@@ -83,7 +83,7 @@ public class Amplitude {
         }
     }
 
-    public synchronized void flushEvents() {
+    public synchronized Response flushEvents() {
         if (eventsToSend.size() > 0) {
             List<Event> eventsInTransit = new ArrayList<>(eventsToSend);
             eventsToSend.clear();
@@ -91,13 +91,18 @@ public class Amplitude {
                 Response response = HttpCall.syncHttpCallWithEventsBuffer(eventsInTransit, apiKey);
                 int responseCode = response.code;
                 //System.out.println(responseCode);
-                if (responseCode >= Constants.HTTP_STATUS_MIN_RETRY && responseCode <= Constants.HTTP_STATUS_MAX_RETRY) {
-                    eventsToSend.addAll(eventsInTransit);
+                Status status = Response.getCodeStatus(responseCode);
+                if (status == Status.INVALID ||
+                    status == Status.PAYLOAD_TOO_LARGE ||
+                    status == Status.RATELIMIT) {
+                    response = Retry.sendEventWithRetry(eventsInTransit, apiKey);
+                } else {
                     tryToFlushEventsIfNotFlushing();
                 }
-                return null;
+                return response;
             });
         }
+        return new Response();
     }
 
 
