@@ -3,6 +3,11 @@ package com.amplitude;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import javax.net.ssl.HttpsURLConnection;
+import java.io.*;
+import java.net.URL;
+import java.util.List;
+
 public class Response {
     public int code;
     public Status status;
@@ -26,9 +31,9 @@ public class Response {
         */
         if (status == Status.SUCCESS) {
             res.SuccessBody = new JSONObject();
-            res.SuccessBody.put("eventsIngested", json.getLong("events_ingested"));
+            res.SuccessBody.put("eventsIngested", json.getInt("events_ingested"));
             res.SuccessBody.put("payloadSizeBytes", json.getInt("payload_size_bytes"));
-            res.SuccessBody.put("serverUploadTime", json.getInt("server_upload_time"));
+            res.SuccessBody.put("serverUploadTime", json.getLong("server_upload_time"));
         } else if (status == Status.INVALID) {
             res.InvalidRequestBody = new JSONObject();
             res.error = getStringValueWithKey(json, "error");
@@ -37,7 +42,6 @@ public class Response {
             res.InvalidRequestBody.put("eventsWithInvalidFields", eventsWithInvalidFields);
             JSONObject eventsWithMissingFields = getJSONObjectValueWithKey(json, "events_with_missing_fields");
             res.InvalidRequestBody.put("eventsWithMissingFields", eventsWithMissingFields);
-
         } else if (status == Status.PAYLOAD_TOO_LARGE) {
             res.error = getStringValueWithKey(json, "error");
 
@@ -61,17 +65,87 @@ public class Response {
         return res;
     }
 
+    public static Response syncHttpCallWithEventsBuffer(List<Event> events, String apiKey) {
+        /*
+         * Use HTTPUrlConnection object to make async HTTP request,
+         * using data from event like device, class name, event props, etc.
+         *
+         * @return The response code
+         */
+        HttpsURLConnection connection;
+        InputStream inputStream = null;
+        int responseCode = 500;
+        Response responseBody = new Response();
+        try {
+            connection = (HttpsURLConnection) new URL(Constants.API_URL).openConnection();
+            connection.setRequestMethod("POST");
+            connection.setRequestProperty("Content-Type", "application/json");
+            connection.setRequestProperty("Accept", "application/json");
+            connection.setConnectTimeout(Constants.NETWORK_TIMEOUT_MILLIS);
+            connection.setReadTimeout(Constants.NETWORK_TIMEOUT_MILLIS);
+            connection.setDoOutput(true);
+
+            JSONObject bodyJson = new JSONObject();
+            bodyJson.put("api_key", apiKey);
+
+            JSONArray eventsArr = new JSONArray();
+            for (int i = 0; i < events.size(); i++) {
+                eventsArr.put(i, events.get(i).toJsonObject());
+            }
+            bodyJson.put("events", eventsArr);
+
+            String bodyString = bodyJson.toString();
+            OutputStream os = connection.getOutputStream();
+            byte[] input = bodyString.getBytes("UTF-8");
+            os.write(input, 0, input.length);
+
+            responseCode = connection.getResponseCode();
+            boolean isErrorCode = responseCode >= Constants.HTTP_STATUS_BAD_REQ;
+            if (!isErrorCode) {
+                inputStream = connection.getInputStream();
+            } else {
+                inputStream = connection.getErrorStream();
+            }
+
+            BufferedReader br = new BufferedReader(new InputStreamReader(inputStream));
+            StringBuilder sb = new StringBuilder();
+            String output;
+            while ((output = br.readLine()) != null) {
+                sb.append(output);
+            }
+            JSONObject responseJson = new JSONObject(sb.toString());
+            responseBody = Response.createNewResponseFromJSON(responseJson);
+        } catch (IOException e) {
+            //This handles UnknownHostException, when the SDK has no internet.
+            //Also SocketTimeoutException, when the HTTP request times out.
+            JSONObject timesOutResponse = new JSONObject();
+            timesOutResponse.put("status", Status.TIMEOUT);
+            timesOutResponse.put("code", 0);
+            responseBody = Response.createNewResponseFromJSON(timesOutResponse);
+        } finally {
+            if (inputStream != null) {
+                try {
+                    inputStream.close();
+                } catch (IOException e) {
+
+                }
+            }
+            return responseBody;
+        }
+
+    }
+
     private static int[] convertJSONArrayToIntArray(JSONObject json, String key) {
-        JSONArray jsonArray= json.getJSONArray(key);
-        if (jsonArray == null) return new int[]{};
+        boolean hasKey = json.has(key) && !json.isNull(key);
+        if (hasKey) return new int[]{};
         else {
+            JSONArray jsonArray = json.getJSONArray(key);
             int[] intArray = new int[jsonArray.length()];
             for (int i = 0; i < jsonArray.length(); i++) {
                 intArray[i] = jsonArray.getInt(i);
             }
             return intArray;
         }
-
     }
 
     private static String getStringValueWithKey(JSONObject json, String key) {
@@ -79,7 +153,7 @@ public class Response {
     }
 
     private static JSONObject getJSONObjectValueWithKey(JSONObject json, String key) {
-        return (json.has(key) && !json.isNull(key)) ? json.getJSONObject(key) : new JSONObject(key);
+        return (json.has(key) && !json.isNull(key)) ? json.getJSONObject(key) : new JSONObject();
     }
 
     public static Status getCodeStatus(int code) {

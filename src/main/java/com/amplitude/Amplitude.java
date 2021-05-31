@@ -1,18 +1,6 @@
 package com.amplitude;
 
-import org.json.JSONArray;
-import org.json.JSONObject;
-
-import javax.net.ssl.HttpsURLConnection;
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
-import java.net.URL;
-
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
@@ -83,26 +71,23 @@ public class Amplitude {
         }
     }
 
-    public synchronized Response flushEvents() {
+    public synchronized void flushEvents() {
         if (eventsToSend.size() > 0) {
             List<Event> eventsInTransit = new ArrayList<>(eventsToSend);
             eventsToSend.clear();
             CompletableFuture.supplyAsync(() -> {
-                Response response = HttpCall.syncHttpCallWithEventsBuffer(eventsInTransit, apiKey);
+                Response response = Response.syncHttpCallWithEventsBuffer(eventsInTransit, apiKey);
                 int responseCode = response.code;
                 //System.out.println(responseCode);
                 Status status = Response.getCodeStatus(responseCode);
                 if (status == Status.INVALID ||
                     status == Status.PAYLOAD_TOO_LARGE ||
                     status == Status.RATELIMIT) {
-                    response = Retry.sendEventWithRetry(eventsInTransit, apiKey);
-                } else {
-                    tryToFlushEventsIfNotFlushing();
+                    Retry.sendEventWithRetry(eventsInTransit, apiKey);
                 }
-                return response;
+                return null;
             });
         }
-        return new Response();
     }
 
 
