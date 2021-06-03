@@ -22,7 +22,6 @@ public class Amplitude {
     private Amplitude() {
         logger = new AmplitudeLog();
         eventsToSend = new ConcurrentLinkedQueue<>();
-
         aboutToStartFlushing = false;
     }
 
@@ -80,7 +79,6 @@ public class Amplitude {
                 Response response = Response.syncHttpCallWithEventsBuffer(eventsInTransit, apiKey);
                 int responseCode = response.code;
                 Status status = Response.getCodeStatus(responseCode);
-                status = Status.INVALID;
                 if (status == Status.INVALID ||
                     status == Status.PAYLOAD_TOO_LARGE ||
                     status == Status.RATELIMIT) {

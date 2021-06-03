@@ -9,16 +9,15 @@ import java.net.URL;
 import java.util.List;
 
 public class Response {
-    public int code;
-    public Status status;
-    public String error;
-    public JSONObject SuccessBody;
-    public JSONObject InvalidRequestBody;
-    public JSONObject RateLimitBody;
-    public static Response res;
+    protected int code;
+    protected Status status;
+    protected String error;
+    protected JSONObject SuccessBody;
+    protected JSONObject InvalidRequestBody;
+    protected JSONObject RateLimitBody;
+    protected static Response res;
 
-
-    public static Response createNewResponseFromJSON(JSONObject json) {
+    private static Response createNewResponseFromJSON(JSONObject json) {
         res = new Response();
         int code  = json.getInt("code");
         Status status = getCodeStatus(code);
@@ -59,13 +58,13 @@ public class Response {
         return res;
     }
 
-    public static Response syncHttpCallWithEventsBuffer(List<Event> events, String apiKey) {
-        /*
-         * Use HTTPUrlConnection object to make async HTTP request,
-         * using data from event like device, class name, event props, etc.
-         *
-         * @return The response code
-         */
+    /*
+     * Use HTTPUrlConnection object to make async HTTP request,
+     * using data from event like device, class name, event props, etc.
+     *
+     * @return The response code
+     */
+    protected static Response syncHttpCallWithEventsBuffer(List<Event> events, String apiKey) {
         HttpsURLConnection connection;
         InputStream inputStream = null;
         int responseCode = 500;
@@ -110,8 +109,8 @@ public class Response {
             JSONObject responseJson = new JSONObject(sb.toString());
             responseBody = Response.createNewResponseFromJSON(responseJson);
         } catch (IOException e) {
-            //This handles UnknownHostException, when the SDK has no internet.
-            //Also SocketTimeoutException, when the HTTP request times out.
+            // This handles UnknownHostException, when the SDK has no internet.
+            // Also SocketTimeoutException, when the HTTP request times out.
             JSONObject timesOutResponse = new JSONObject();
             timesOutResponse.put("status", Status.TIMEOUT);
             timesOutResponse.put("code", 0);
@@ -150,7 +149,7 @@ public class Response {
         return (json.has(key) && !json.isNull(key)) ? json.getJSONObject(key) : new JSONObject();
     }
 
-    public static Status getCodeStatus(int code) {
+    protected static Status getCodeStatus(int code) {
         if (code >= 200 && code < 300) {
             return Status.SUCCESS;
         }
