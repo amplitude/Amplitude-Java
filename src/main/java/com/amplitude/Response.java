@@ -24,11 +24,6 @@ public class Response {
         Status status = getCodeStatus(code);
         res.code = code;
         res.status = status;
-        /*
-        System.out.println(code);
-        System.out.println(status);
-        System.out.println(json.toString());
-        */
         if (status == Status.SUCCESS) {
             res.SuccessBody = new JSONObject();
             res.SuccessBody.put("eventsIngested", json.getInt("events_ingested"));
@@ -44,7 +39,6 @@ public class Response {
             res.InvalidRequestBody.put("eventsWithMissingFields", eventsWithMissingFields);
         } else if (status == Status.PAYLOAD_TOO_LARGE) {
             res.error = getStringValueWithKey(json, "error");
-
         } else if (status == Status.RATELIMIT) {
             res.error = getStringValueWithKey(json, "error");
             res.RateLimitBody = new JSONObject();
@@ -53,11 +47,11 @@ public class Response {
             res.RateLimitBody.put("throttledDevices", throttledDevices);
             JSONObject throttledUsers = getJSONObjectValueWithKey(json, "throttled_users");
             res.RateLimitBody.put("throttledUsers", throttledUsers);
+            res.RateLimitBody.put("throttledEvents", convertJSONArrayToIntArray(json, "throttled_events"));
             JSONObject exceededDailyQuotaDevices = getJSONObjectValueWithKey(json, "exceeded_daily_quota_devices");
             res.RateLimitBody.put("exceededDailyQuotaDevices", exceededDailyQuotaDevices);
             JSONObject exceededDailyQuotaUsers = getJSONObjectValueWithKey(json, "exceeded_daily_quota_users");
             res.RateLimitBody.put("exceededDailyQuotaUsers", exceededDailyQuotaUsers);
-            res.RateLimitBody.put("throttledEvents", convertJSONArrayToIntArray(json, "throttled_events"));
         } else if (status == Status.SYSTEM_ERROR) {
             res.error = json.getString("error");
             res.code = 0;
@@ -137,7 +131,7 @@ public class Response {
 
     private static int[] convertJSONArrayToIntArray(JSONObject json, String key) {
         boolean hasKey = json.has(key) && !json.isNull(key);
-        if (hasKey) return new int[]{};
+        if (!hasKey) return new int[]{};
         else {
             JSONArray jsonArray = json.getJSONArray(key);
             int[] intArray = new int[jsonArray.length()];
@@ -149,7 +143,7 @@ public class Response {
     }
 
     private static String getStringValueWithKey(JSONObject json, String key) {
-        return json.getString(key) == null ? "" : json.getString(key);
+        return json.has(key) && json.getString(key) != null ? json.getString(key) : "";
     }
 
     private static JSONObject getJSONObjectValueWithKey(JSONObject json, String key) {

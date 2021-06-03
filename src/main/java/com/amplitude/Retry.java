@@ -11,9 +11,10 @@ class retryEventsOnceResult {
     boolean shouldRetry;
     boolean shouldReduceEventCount;
     int[] eventIndicesToRemove;
-    public static retryEventsOnceResult result;
+    protected static retryEventsOnceResult result;
 
-    public static retryEventsOnceResult getResult(boolean shouldRetry, boolean shouldReduceEventCount, int[] eventIndicesToRemove) {
+    protected static retryEventsOnceResult getResult(boolean shouldRetry, boolean shouldReduceEventCount, int[] eventIndicesToRemove) {
+        result = new retryEventsOnceResult();
         result.shouldRetry = shouldRetry;
         result.shouldReduceEventCount = shouldReduceEventCount;
         result.eventIndicesToRemove = eventIndicesToRemove;
@@ -28,7 +29,7 @@ class Retry {
 
     //helper method to get event list from idToBuffer
     private static List<Event> getRetryBuffer(String userId, String deviceId) {
-        return (idToBuffer.get(userId) != null) ? idToBuffer.get(userId).get(deviceId) : new ArrayList<>();
+        return (idToBuffer.get(userId) != null) ? idToBuffer.get(userId).get(deviceId) : null;
     }
 
     private static List<Event> pruneEvent(List<Event> events) {
@@ -39,7 +40,7 @@ class Retry {
             String userId = event.userId;
             String deviceId = event.deviceId;
             //userId and deviceId are simi-required
-            if ((userId.length() > 0) || (deviceId.length() > 0)) {
+            if ((userId != null && userId.length() > 0) || (deviceId != null && deviceId.length() > 0)) {
                 List<Event> currentBuffer = getRetryBuffer(userId, deviceId);
                 if (currentBuffer != null) {
                     //already in current retry;
@@ -76,7 +77,7 @@ class Retry {
         return arr;
     }
 
-
+    //works fine
     private static int[] collectInvalidEventIndices(Response response) {
         List<Integer> invalidIndices = new ArrayList<Integer>();
         if (response.status == Status.INVALID && response.InvalidRequestBody != null) {
@@ -85,7 +86,6 @@ class Retry {
             JSONObject eventsWithMissingFields = response.InvalidRequestBody.getJSONObject("eventsWithMissingFields");
             Iterator<String> invalidFieldsKeys = eventsWithInvalidFields.keys();
             Iterator<String> missingFieldsKeys = eventsWithMissingFields.keys();
-
             while (invalidFieldsKeys.hasNext()) {
                 String key = invalidFieldsKeys.next();
                 int[] eventIndices = JSONArrayToIntArray(eventsWithInvalidFields.getJSONArray(key));
@@ -101,7 +101,7 @@ class Retry {
                 }
             }
             Collections.sort(invalidIndices);
-            int[] allInvalidEventIndices = invalidIndices.stream().mapToInt(Integer::intValue).toArray();
+            int[] allInvalidEventIndices = invalidIndices.stream().mapToInt(i -> i).toArray();
             return allInvalidEventIndices;
         }
         return new int[]{};
@@ -136,11 +136,9 @@ class Retry {
         return retryEventsOnceResult.getResult(shouldRetry, shouldReduceEventCount, eventIndicesToRemove);
     }
 
-    private static void retryEventsOnloop(String userId, String deviceId, String apiKey) {
+    private static void retryEventsOnLoop(String userId, String deviceId, String apiKey) {
         List<Event> eventsBuffer = getRetryBuffer(userId, deviceId);
-        // work around for java 8 no final variable in lambeda function
-        int[] eventCountHolder = new int[1];
-        eventCountHolder[0] = eventsBuffer.size();
+        int[] eventCountHolder = new int[]{eventsBuffer.size()};
         if (eventCountHolder[0] == 0) {
             cleanUpBuffer(userId, deviceId);
             return;
@@ -192,22 +190,24 @@ class Retry {
 
     //calling this function if eventBuffer not in current Retry list.
     private static void onEventsError(List<Event> events, Response response, String apiKey) {
-        List<Event> eventsToRetry = new ArrayList<>();
+        List<Event> eventsToRetry = events;
         //filter invalid event out based on the response code.
         if (response.status == Status.RATELIMIT && response.RateLimitBody != null) {
-            //JSONObject deviceId as key, number as valude
+            //JSONObject deviceId as key, number as value
             JSONObject exceededDailyQuotaUsers = response.RateLimitBody.getJSONObject("exceededDailyQuotaUsers");
             JSONObject exceededDailyQuotaDevices = response.RateLimitBody.getJSONObject("exceededDailyQuotaDevices");
             eventsToRetry = events.stream()
-                    .filter((event -> (event.userId.length() > 0 && exceededDailyQuotaUsers.has(event.userId))
-                            && (event.deviceId.length() > 0 && exceededDailyQuotaDevices.has(event.deviceId))))
+                    .filter((event -> !(event.userId != null && exceededDailyQuotaUsers.has(event.userId))
+                            && !(event.deviceId != null && exceededDailyQuotaDevices.has(event.deviceId))))
                     .collect(Collectors.toList());
         } else if (response.status == Status.INVALID) {
-            if (response.InvalidRequestBody.getString("missingField").length() > 0 || events.size() == 1) {
+            if ((response.InvalidRequestBody.has("missingField") &&
+                    response.InvalidRequestBody.getString("missingField").length() > 0) ||
+                    events.size() == 1) {
                 // Return early if there's an issue with the entire payload
                 // or if there's only one event and its invalid
                 return;
-            } else {
+            } else if (response.InvalidRequestBody != null) {
                 //filter out invalid events id
                 int[] invalidEventIndices = collectInvalidEventIndices(response);
                 eventsToRetry = IntStream.range(0, events.size())
@@ -220,8 +220,8 @@ class Retry {
         }
 
         for (Event event : eventsToRetry) {
-            String userId = event.userId;
-            String deviceId = event.deviceId;
+            String userId = (event.userId != null) ? event.userId : "";
+            String deviceId = (event.deviceId != null) ? event.deviceId : "";
             if ((userId.length() > 0) || (deviceId.length() > 0)) {
                 Map<String, List<Event>> deviceToBufferMap = idToBuffer.get(userId);
                 if (deviceToBufferMap == null) {
@@ -234,7 +234,7 @@ class Retry {
                     deviceToBufferMap.put(deviceId, retryBuffer);
                     Thread retryThread =
                             new Thread(() -> {
-                                //TODO: retryEventsOnLoop(userId, deviceId, apiKey);
+                                retryEventsOnLoop(userId, deviceId, apiKey);
                             });
                     retryThread.start();
                 }
@@ -245,21 +245,10 @@ class Retry {
     }
 
     //the main entrance for the retry logic.
-    protected static Response sendEventWithRetry(List<Event> events, String apiKey) {
-        System.out.println(apiKey);
-        //init the response
-        Response response = new Response();
-        response.status = Status.UNKNOWN;
-        response.code = 0;
-        //pruning the input events, if the currentEventBuffer already in the retry list, just append the event. otherwise, call onEventsError if the result is valid
+    protected static Response sendEventWithRetry(List<Event> events, String apiKey, Response response) {
         List<Event> eventsToSend = pruneEvent(events);
-        response = Response.syncHttpCallWithEventsBuffer(eventsToSend, apiKey);
-        if (response.status == Status.INVALID ||
-                response.status == Status.PAYLOAD_TOO_LARGE ||
-                response.status == Status.RATELIMIT) {
-            if (eventsInRetry < Constants.MAX_CACHED_EVENTS) {
-                onEventsError(eventsToSend, response, apiKey);
-            }
+        if (eventsInRetry < Constants.MAX_CACHED_EVENTS) {
+            onEventsError(eventsToSend, response, apiKey);
         }
         return response;
     }
