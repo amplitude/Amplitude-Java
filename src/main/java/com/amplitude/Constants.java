@@ -15,7 +15,7 @@ public interface Constants {
     int     EVENT_BUF_COUNT         = 10;
     int     EVENT_BUF_TIME_MILLIS   = 10000;
 
-    long[]   RETRY_TIMEOUTS =  {100, 100, 200, 200, 400, 400, 800, 800, 1600, 1600, 3200, 3200};
+    long[]  RETRY_TIMEOUTS =  {100, 100, 200, 200, 400, 400, 800, 800, 1600, 1600, 3200, 3200};
     int     MAX_CACHED_EVENTS = 16000;
 
 }

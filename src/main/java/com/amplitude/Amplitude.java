@@ -1,5 +1,6 @@
 package com.amplitude;
 
+import java.net.HttpCookie;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -71,17 +72,20 @@ public class Amplitude {
         }
     }
 
+    private boolean shouldRetryForStatus(Status status) {
+        return (status == Status.INVALID ||
+                status == Status.PAYLOAD_TOO_LARGE ||
+                status == Status.RATELIMIT);
+    }
+
     public synchronized void flushEvents() {
         if (eventsToSend.size() > 0) {
             List<Event> eventsInTransit = new ArrayList<>(eventsToSend);
             eventsToSend.clear();
             CompletableFuture.supplyAsync(() -> {
-                Response response = Response.syncHttpCallWithEventsBuffer(eventsInTransit, apiKey);
-                int responseCode = response.code;
-                Status status = Response.getCodeStatus(responseCode);
-                if (status == Status.INVALID ||
-                    status == Status.PAYLOAD_TOO_LARGE ||
-                    status == Status.RATELIMIT) {
+                Response response = HttpCall.syncHttpCallWithEventsBuffer(eventsInTransit, apiKey);
+                Status status = response.status;
+                if (shouldRetryForStatus(status)) {
                     Retry.sendEventWithRetry(eventsInTransit, apiKey, response);
                 }
                 return null;

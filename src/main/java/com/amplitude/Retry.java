@@ -4,17 +4,18 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-class retryEventsOnceResult {
+class RetryEventsOnceResult {
     protected boolean shouldRetry;
     protected boolean shouldReduceEventCount;
     protected int[] eventIndicesToRemove;
-    protected static retryEventsOnceResult result;
+    protected static RetryEventsOnceResult result;
 
-    protected static retryEventsOnceResult getResult(boolean shouldRetry, boolean shouldReduceEventCount, int[] eventIndicesToRemove) {
-        result = new retryEventsOnceResult();
+    protected static RetryEventsOnceResult getResult(boolean shouldRetry, boolean shouldReduceEventCount, int[] eventIndicesToRemove) {
+        result = new RetryEventsOnceResult();
         result.shouldRetry = shouldRetry;
         result.shouldReduceEventCount = shouldReduceEventCount;
         result.eventIndicesToRemove = eventIndicesToRemove;
@@ -24,7 +25,7 @@ class retryEventsOnceResult {
 
 class Retry {
     // Use map to record the events are currently in retry queue.
-    private static Map<String, Map<String, List<Event>>> idToBuffer = new HashMap<String, Map<String, List<Event>>>();
+    private static Map<String, Map<String, List<Event>>> idToBuffer = new ConcurrentHashMap<String, Map<String, List<Event>>>();
     private static int eventsInRetry = 0;
 
     // Helper method to get event list from idToBuffer
@@ -67,44 +68,36 @@ class Retry {
         }
     }
 
-    private static int[] JSONArrayToIntArray(JSONArray jsonArray) {
-        int[] arr = new int[jsonArray.length()];
-        for (int i = 0; i < arr.length; ++i) {
-            arr[i] = jsonArray.optInt(i);
+    private static List<Integer> collectIndicesWithRequestBody(JSONObject requestBody, String key) {
+        List<Integer> invalidIndices = new ArrayList<Integer>();
+        JSONObject fields = requestBody.getJSONObject(key);
+        Iterator<String> fieldKeys = fields.keys();
+        while (fieldKeys.hasNext()) {
+            String fieldKey = fieldKeys.next();
+            int[] eventIndices = Utils.jsonArrayToIntArray(fields.getJSONArray(fieldKey));
+            for (int eventIndex : eventIndices) {
+                invalidIndices.add(eventIndex);
+            }
         }
-        return arr;
+        Collections.sort(invalidIndices);
+        return invalidIndices;
     }
 
     private static int[] collectInvalidEventIndices(Response response) {
-        List<Integer> invalidIndices = new ArrayList<Integer>();
+        int[] invalidIndices = new int[]{};
         if (response.status == Status.INVALID && response.InvalidRequestBody != null) {
-            JSONObject eventsWithInvalidFields = response.InvalidRequestBody.getJSONObject("eventsWithInvalidFields");
-            JSONObject eventsWithMissingFields = response.InvalidRequestBody.getJSONObject("eventsWithMissingFields");
-            Iterator<String> invalidFieldsKeys = eventsWithInvalidFields.keys();
-            Iterator<String> missingFieldsKeys = eventsWithMissingFields.keys();
-            while (invalidFieldsKeys.hasNext()) {
-                String key = invalidFieldsKeys.next();
-                int[] eventIndices = JSONArrayToIntArray(eventsWithInvalidFields.getJSONArray(key));
-                for (int eventIndex : eventIndices) {
-                    invalidIndices.add(eventIndex);
-                }
-            }
-            while (missingFieldsKeys.hasNext()) {
-                String key = missingFieldsKeys.next();
-                int[] eventIndices = JSONArrayToIntArray(eventsWithMissingFields.getJSONArray(key));
-                for (int eventIndex : eventIndices) {
-                    invalidIndices.add(eventIndex);
-                }
-            }
-            Collections.sort(invalidIndices);
-            int[] allInvalidEventIndices = invalidIndices.stream().mapToInt(i -> i).toArray();
+            List<Integer> invalidFieldsIndices = collectIndicesWithRequestBody(response.InvalidRequestBody, "eventsWithInvalidFields");
+            List<Integer> missingFieldsIndices = collectIndicesWithRequestBody(response.InvalidRequestBody, "eventsWithMissingFields");
+            invalidFieldsIndices.addAll(missingFieldsIndices);
+            Collections.sort(invalidFieldsIndices);
+            int[] allInvalidEventIndices = invalidFieldsIndices.stream().mapToInt(i -> i).toArray();
             return allInvalidEventIndices;
         }
-        return new int[]{};
+        return invalidIndices;
     }
 
-    private static retryEventsOnceResult retryEventsOnce(String userId, String deviceId, List<Event> events, String apiKey) {
-        Response onceReponse = Response.syncHttpCallWithEventsBuffer(events, apiKey);
+    private static RetryEventsOnceResult retryEventsOnce(String userId, String deviceId, List<Event> events, String apiKey) {
+        Response onceReponse = HttpCall.syncHttpCallWithEventsBuffer(events, apiKey);
         boolean shouldRetry = false;
         boolean shouldReduceEventCount = false;
         int[] eventIndicesToRemove = new int[]{};
@@ -130,7 +123,7 @@ class Retry {
         } else if (onceReponse.status == Status.SUCCESS) {
             shouldRetry = false;
         }
-        return retryEventsOnceResult.getResult(shouldRetry, shouldReduceEventCount, eventIndicesToRemove);
+        return RetryEventsOnceResult.getResult(shouldRetry, shouldReduceEventCount, eventIndicesToRemove);
     }
 
     private static void retryEventsOnLoop(String userId, String deviceId, String apiKey) {
@@ -145,13 +138,11 @@ class Retry {
                 new Thread(() -> {
                     for (int numRetries = 0; numRetries < retryTimes; numRetries++) {
                         long sleepDuration = Constants.RETRY_TIMEOUTS[numRetries];
-                        if ( eventCountHolder[0] <= 0 || eventCountHolder[0] > eventsBuffer.size())
-                            break;
                         try {
                             Thread.sleep(sleepDuration);
                             boolean isLastTry = numRetries == Constants.RETRY_TIMEOUTS.length - 1;
-                            List<Event> eventsToRetrys = eventsBuffer.subList(0, eventCountHolder[0]);
-                            retryEventsOnceResult retryResult = retryEventsOnce(userId, deviceId, eventsToRetrys, apiKey);
+                            List<Event> eventsToRetry = eventsBuffer.subList(0, eventCountHolder[0]);
+                            RetryEventsOnceResult retryResult = retryEventsOnce(userId, deviceId, eventsToRetry, apiKey);
                             boolean shouldRetry = retryResult.shouldRetry;
                             boolean shouldReduceEventCount = retryResult.shouldReduceEventCount;
                             int[] eventIndicesToRemove = retryResult.eventIndicesToRemove;
