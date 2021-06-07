@@ -14,7 +14,7 @@ public class Utils {
 
     public static int[] jsonArrayToIntArray(JSONArray jsonArray) {
         int[] intArray = new int[jsonArray.length()];
-        for (int i = 0; i < intArray.length; ++i) {
+        for (int i = 0; i < intArray.length; i++) {
             intArray[i] = jsonArray.optInt(i);
         }
         return intArray;

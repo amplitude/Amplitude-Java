@@ -1,12 +1,6 @@
 package com.amplitude;
 
-import org.json.JSONArray;
 import org.json.JSONObject;
-
-import javax.net.ssl.HttpsURLConnection;
-import java.io.*;
-import java.net.URL;
-import java.util.List;
 
 public class Response {
     protected int code;
@@ -15,10 +9,9 @@ public class Response {
     protected JSONObject SuccessBody;
     protected JSONObject InvalidRequestBody;
     protected JSONObject RateLimitBody;
-    protected static Response res;
 
     protected static Response populateResponse(JSONObject json) {
-        res = new Response();
+        Response res = new Response();
         int code  = json.getInt("code");
         Status status = Status.getCodeStatus(code);
         res.code = code;

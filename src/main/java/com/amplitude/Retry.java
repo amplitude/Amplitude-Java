@@ -1,21 +1,24 @@
 package com.amplitude;
 
-import org.json.JSONArray;
 import org.json.JSONObject;
 
-import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.Arrays;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.Collections;
 
 class RetryEventsOnceResult {
     protected boolean shouldRetry;
     protected boolean shouldReduceEventCount;
     protected int[] eventIndicesToRemove;
-    protected static RetryEventsOnceResult result;
-
     protected static RetryEventsOnceResult getResult(boolean shouldRetry, boolean shouldReduceEventCount, int[] eventIndicesToRemove) {
-        result = new RetryEventsOnceResult();
+        RetryEventsOnceResult result = new RetryEventsOnceResult();
         result.shouldRetry = shouldRetry;
         result.shouldReduceEventCount = shouldReduceEventCount;
         result.eventIndicesToRemove = eventIndicesToRemove;
@@ -84,7 +87,6 @@ class Retry {
     }
 
     private static int[] collectInvalidEventIndices(Response response) {
-        int[] invalidIndices = new int[]{};
         if (response.status == Status.INVALID && response.InvalidRequestBody != null) {
             List<Integer> invalidFieldsIndices = collectIndicesWithRequestBody(response.InvalidRequestBody, "eventsWithInvalidFields");
             List<Integer> missingFieldsIndices = collectIndicesWithRequestBody(response.InvalidRequestBody, "eventsWithMissingFields");
@@ -93,7 +95,7 @@ class Retry {
             int[] allInvalidEventIndices = invalidFieldsIndices.stream().mapToInt(i -> i).toArray();
             return allInvalidEventIndices;
         }
-        return invalidIndices;
+        return new int[]{};
     }
 
     private static RetryEventsOnceResult retryEventsOnce(String userId, String deviceId, List<Event> events, String apiKey) {
@@ -212,7 +214,7 @@ class Retry {
         for (Event event : eventsToRetry) {
             String userId = (event.userId != null) ? event.userId : "";
             String deviceId = (event.deviceId != null) ? event.deviceId : "";
-            if ((userId.length() > 0) || (deviceId.length() > 0)) {
+            if (userId.length() > 0 || deviceId.length() > 0) {
                 Map<String, List<Event>> deviceToBufferMap = idToBuffer.get(userId);
                 if (deviceToBufferMap == null) {
                     deviceToBufferMap = new HashMap<String, List<Event>>();
