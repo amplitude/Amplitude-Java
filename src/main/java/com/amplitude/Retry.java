@@ -17,12 +17,11 @@ class RetryEventsOnceResult {
     protected boolean shouldRetry;
     protected boolean shouldReduceEventCount;
     protected int[] eventIndicesToRemove;
-    protected static RetryEventsOnceResult getResult(boolean shouldRetry, boolean shouldReduceEventCount, int[] eventIndicesToRemove) {
-        RetryEventsOnceResult result = new RetryEventsOnceResult();
-        result.shouldRetry = shouldRetry;
-        result.shouldReduceEventCount = shouldReduceEventCount;
-        result.eventIndicesToRemove = eventIndicesToRemove;
-        return result;
+
+    protected RetryEventsOnceResult(boolean shouldRetry, boolean shouldReduceEventCount, int[] eventIndicesToRemove) {
+        this.shouldRetry = shouldRetry;
+        this.shouldReduceEventCount = shouldReduceEventCount;
+        this.eventIndicesToRemove = eventIndicesToRemove;
     }
 }
 
@@ -125,7 +124,7 @@ class Retry {
         } else if (onceReponse.status == Status.SUCCESS) {
             shouldRetry = false;
         }
-        return RetryEventsOnceResult.getResult(shouldRetry, shouldReduceEventCount, eventIndicesToRemove);
+        return new RetryEventsOnceResult(shouldRetry, shouldReduceEventCount, eventIndicesToRemove);
     }
 
     private static void retryEventsOnLoop(String userId, String deviceId, String apiKey) {
