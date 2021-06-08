@@ -2,16 +2,16 @@ package com.amplitude;
 
 import org.json.JSONObject;
 
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
-import java.util.List;
 import java.util.Map;
-import java.util.HashMap;
 import java.util.Arrays;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.Collections;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+
 
 class RetryEventsOnceResult {
     protected boolean shouldRetry;
@@ -56,14 +56,10 @@ class Retry {
     }
 
     // Cleans up the id in the buffer map if the job is done
-    private static void cleanUpBuffer(String userId, String deviceId) {
+    private static void cleanUpBuffer(String userId) {
         Map<String, List<Event>> deviceToBufferMap = idToBuffer.get(userId);
         if (deviceToBufferMap == null) {
             return;
-        }
-        List<Event> eventsToRetry = deviceToBufferMap.get(deviceId);
-        if (eventsToRetry != null && eventsToRetry.size() == 0) {
-            deviceToBufferMap.remove(deviceId);
         }
         if (deviceToBufferMap.size() == 0) {
             idToBuffer.remove(userId);
@@ -128,21 +124,21 @@ class Retry {
     }
 
     private static void retryEventsOnLoop(String userId, String deviceId, String apiKey) {
-        List<Event> eventsBuffer = getRetryBuffer(userId, deviceId);
-        int[] eventCountHolder = new int[]{eventsBuffer.size()};
-        if (eventCountHolder[0] == 0) {
-            cleanUpBuffer(userId, deviceId);
+        List<Event> eventsBuffer =  (idToBuffer.get(userId) != null) ? idToBuffer.get(userId).remove(deviceId) : null;
+        if (eventsBuffer == null || eventsBuffer.size() == 0) {
+            cleanUpBuffer(userId);
             return;
         }
         int retryTimes = Constants.RETRY_TIMEOUTS.length;
         Thread retryThread =
                 new Thread(() -> {
+                    int eventCount = eventsBuffer.size();
                     for (int numRetries = 0; numRetries < retryTimes; numRetries++) {
                         long sleepDuration = Constants.RETRY_TIMEOUTS[numRetries];
                         try {
                             Thread.sleep(sleepDuration);
                             boolean isLastTry = numRetries == Constants.RETRY_TIMEOUTS.length - 1;
-                            List<Event> eventsToRetry = eventsBuffer.subList(0, eventCountHolder[0]);
+                            List<Event> eventsToRetry = eventsBuffer.subList(0, eventCount);
                             RetryEventsOnceResult retryResult = retryEventsOnce(userId, deviceId, eventsToRetry, apiKey);
                             boolean shouldRetry = retryResult.shouldRetry;
                             boolean shouldReduceEventCount = retryResult.shouldReduceEventCount;
@@ -151,15 +147,15 @@ class Retry {
                                 int numEventsRemoved = 0;
                                 for (int i = 0; i < eventIndicesToRemove.length; i++) {
                                     int index = eventIndicesToRemove[i];
-                                    if (index < eventCountHolder[0]) {
+                                    if (index < eventCount) {
                                         eventsBuffer.remove(i);
                                         numEventsRemoved += 1;
                                     }
                                 }
-                                eventCountHolder[0] -= numEventsRemoved;
-                                eventsInRetry -= eventCountHolder[0];
+                                eventCount -= numEventsRemoved;
+                                eventsInRetry -= eventCount;
                                 // If we managed to remove all the events, break early
-                                if (eventCountHolder[0] < 1) {
+                                if (eventCount< 1) {
                                     break;
                                 }
                             }
@@ -167,14 +163,12 @@ class Retry {
                                 break;
                             }
                             if (shouldReduceEventCount && !isLastTry) {
-                                eventCountHolder[0] = eventCountHolder[0] / 2;
+                                eventCount /= 2;
                             }
-                            // Clean up the events
-                            eventsBuffer.subList(0, eventCountHolder[0]).clear();
-                            eventsInRetry -= eventCountHolder[0];
                         } catch (InterruptedException e) {
                         }
                     }
+                    eventsInRetry -= eventCount;
                 });
         retryThread.start();
     }
@@ -216,18 +210,14 @@ class Retry {
             if (userId.length() > 0 || deviceId.length() > 0) {
                 Map<String, List<Event>> deviceToBufferMap = idToBuffer.get(userId);
                 if (deviceToBufferMap == null) {
-                    deviceToBufferMap = new HashMap<String, List<Event>>();
+                    deviceToBufferMap = new ConcurrentHashMap<String, List<Event>>();
                     idToBuffer.put(userId, deviceToBufferMap);
                 }
                 List<Event> retryBuffer = deviceToBufferMap.get(deviceId);
                 if (retryBuffer == null) {
                     retryBuffer = new ArrayList<Event>();
                     deviceToBufferMap.put(deviceId, retryBuffer);
-                    Thread retryThread =
-                            new Thread(() -> {
-                                retryEventsOnLoop(userId, deviceId, apiKey);
-                            });
-                    retryThread.start();
+                    retryEventsOnLoop(userId, deviceId, apiKey);
                 }
                 eventsInRetry++;
                 retryBuffer.add(event);
