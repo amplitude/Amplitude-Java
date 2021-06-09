@@ -7,6 +7,7 @@ import java.util.Arrays;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.Iterator;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -29,7 +30,7 @@ class Retry {
   // Use map to record the events are currently in retry queue.
   private static Map<String, Map<String, List<Event>>> idToBuffer =
       new ConcurrentHashMap<String, Map<String, List<Event>>>();
-  private static int eventsInRetry = 0;
+  private static AtomicInteger eventsInRetry = new AtomicInteger(0);
 
   // Helper method to get event list from idToBuffer
   private static List<Event> getRetryBuffer(String userId, String deviceId) {
@@ -48,7 +49,7 @@ class Retry {
         List<Event> currentBuffer = getRetryBuffer(userId, deviceId);
         if (currentBuffer != null) {
           currentBuffer.add(event);
-          eventsInRetry++;
+          eventsInRetry.incrementAndGet();
         } else {
           prunedEvents.add(event);
         }
@@ -163,7 +164,7 @@ class Retry {
                       }
                     }
                     eventCount -= numEventsRemoved;
-                    eventsInRetry -= eventCount;
+                    eventsInRetry.set(eventsInRetry.intValue() - eventCount);
                     // If we managed to remove all the events, break early
                     if (eventCount < 1) {
                       break;
@@ -178,7 +179,8 @@ class Retry {
                 } catch (InterruptedException e) {
                 }
               }
-              eventsInRetry -= eventCount;
+              eventsInRetry.set(eventsInRetry.intValue() - eventCount);
+              ;
             });
     retryThread.start();
   }
@@ -236,7 +238,7 @@ class Retry {
           deviceToBufferMap.put(deviceId, retryBuffer);
           retryEventsOnLoop(userId, deviceId, apiKey);
         }
-        eventsInRetry++;
+        eventsInRetry.incrementAndGet();
         retryBuffer.add(event);
       }
     }
@@ -245,7 +247,7 @@ class Retry {
   // The main entrance for the retry logic.
   protected static void sendEventWithRetry(List<Event> events, String apiKey, Response response) {
     List<Event> eventsToSend = pruneEvent(events);
-    if (eventsInRetry < Constants.MAX_CACHED_EVENTS) {
+    if (eventsInRetry.intValue() < Constants.MAX_CACHED_EVENTS) {
       onEventsError(eventsToSend, response, apiKey);
     }
   }
