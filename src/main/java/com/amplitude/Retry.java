@@ -164,7 +164,7 @@ class Retry {
                       }
                     }
                     eventCount -= numEventsRemoved;
-                    eventsInRetry.set(eventsInRetry.intValue() - eventCount);
+                    eventsInRetry.set(eventsInRetry.intValue() - numEventsRemoved);
                     // If we managed to remove all the events, break early
                     if (eventCount < 1) {
                       break;
@@ -180,7 +180,6 @@ class Retry {
                 }
               }
               eventsInRetry.set(eventsInRetry.intValue() - eventCount);
-              ;
             });
     retryThread.start();
   }
@@ -204,7 +203,8 @@ class Retry {
                               && exceededDailyQuotaDevices.has(event.deviceId))))
               .collect(Collectors.toList());
     } else if (response.status == Status.INVALID) {
-      if ((response.InvalidRequestBody.has("missingField")
+      if ((response.InvalidRequestBody != null
+              && response.InvalidRequestBody.has("missingField")
               && response.InvalidRequestBody.getString("missingField").length() > 0)
           || events.size() == 1) {
         // Return early if there's an issue with the entire payload
@@ -245,7 +245,7 @@ class Retry {
   }
 
   // The main entrance for the retry logic.
-  protected static void sendEventWithRetry(List<Event> events, String apiKey, Response response) {
+  protected static void sendEventsWithRetry(List<Event> events, String apiKey, Response response) {
     List<Event> eventsToSend = pruneEvent(events);
     if (eventsInRetry.intValue() < Constants.MAX_CACHED_EVENTS) {
       onEventsError(eventsToSend, response, apiKey);

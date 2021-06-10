@@ -87,7 +87,7 @@ public class Amplitude {
             Response response = HttpCall.syncHttpCallWithEventsBuffer(eventsInTransit, apiKey);
             Status status = response.status;
             if (shouldRetryForStatus(status)) {
-              Retry.sendEventWithRetry(eventsInTransit, apiKey, response);
+              Retry.sendEventsWithRetry(eventsInTransit, apiKey, response);
             }
             return null;
           });
