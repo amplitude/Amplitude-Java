@@ -72,12 +72,6 @@ public class Amplitude {
     }
   }
 
-  private boolean shouldRetryForStatus(Status status) {
-    return (status == Status.INVALID
-        || status == Status.PAYLOAD_TOO_LARGE
-        || status == Status.RATELIMIT);
-  }
-
   public synchronized void flushEvents() {
     if (eventsToSend.size() > 0) {
       List<Event> eventsInTransit = new ArrayList<>(eventsToSend);
@@ -86,7 +80,8 @@ public class Amplitude {
           () -> {
             Response response = HttpCall.syncHttpCallWithEventsBuffer(eventsInTransit, apiKey);
             Status status = response.status;
-            if (shouldRetryForStatus(status)) {
+
+            if (Retry.shouldRetryForStatus(status)) {
               Retry.sendEventsWithRetry(eventsInTransit, apiKey, response);
             }
             return null;

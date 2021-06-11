@@ -6,10 +6,13 @@ import java.util.Map;
 import java.util.Arrays;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -101,7 +104,7 @@ class Retry {
   private static RetryEventsOnceResult retryEventsOnce(
       String userId, String deviceId, List<Event> events, String apiKey) {
     Response onceReponse = HttpCall.syncHttpCallWithEventsBuffer(events, apiKey);
-    boolean shouldRetry = false;
+    boolean shouldRetry = true;
     boolean shouldReduceEventCount = false;
     int[] eventIndicesToRemove = new int[] {};
     if (onceReponse.status == Status.RATELIMIT) {
@@ -132,16 +135,16 @@ class Retry {
   }
 
   private static void retryEventsOnLoop(String userId, String deviceId, String apiKey) {
-    List<Event> eventsBuffer =
-        (idToBuffer.get(userId) != null) ? idToBuffer.get(userId).remove(deviceId) : null;
-    if (eventsBuffer == null || eventsBuffer.size() == 0) {
-      cleanUpBuffer(userId);
-      return;
-    }
-    int retryTimes = Constants.RETRY_TIMEOUTS.length;
     Thread retryThread =
         new Thread(
             () -> {
+              List<Event> eventsBuffer =
+                  (idToBuffer.get(userId) != null) ? idToBuffer.get(userId).remove(deviceId) : null;
+              if (eventsBuffer == null || eventsBuffer.size() == 0) {
+                cleanUpBuffer(userId);
+                return;
+              }
+              int retryTimes = Constants.RETRY_TIMEOUTS.length;
               int eventCount = eventsBuffer.size();
               for (int numRetries = 0; numRetries < retryTimes; numRetries++) {
                 long sleepDuration = Constants.RETRY_TIMEOUTS[numRetries];
@@ -154,6 +157,7 @@ class Retry {
                   boolean shouldRetry = retryResult.shouldRetry;
                   boolean shouldReduceEventCount = retryResult.shouldReduceEventCount;
                   int[] eventIndicesToRemove = retryResult.eventIndicesToRemove;
+
                   if (eventIndicesToRemove.length > 0) {
                     int numEventsRemoved = 0;
                     for (int i = 0; i < eventIndicesToRemove.length; i++) {
@@ -164,7 +168,7 @@ class Retry {
                       }
                     }
                     eventCount -= numEventsRemoved;
-                    eventsInRetry.set(eventsInRetry.intValue() - numEventsRemoved);
+                    eventsInRetry.addAndGet(-numEventsRemoved);
                     // If we managed to remove all the events, break early
                     if (eventCount < 1) {
                       break;
@@ -179,7 +183,7 @@ class Retry {
                 } catch (InterruptedException e) {
                 }
               }
-              eventsInRetry.set(eventsInRetry.intValue() - eventCount);
+              eventsInRetry.addAndGet(-eventCount);
             });
     retryThread.start();
   }
@@ -222,7 +226,7 @@ class Retry {
     } else if (response.status == Status.SUCCESS) {
       return;
     }
-
+    Map<String, Set<String>> userToDevices = new HashMap<>();
     for (Event event : eventsToRetry) {
       String userId = (event.userId != null) ? event.userId : "";
       String deviceId = (event.deviceId != null) ? event.deviceId : "";
@@ -236,12 +240,25 @@ class Retry {
         if (retryBuffer == null) {
           retryBuffer = new ArrayList<Event>();
           deviceToBufferMap.put(deviceId, retryBuffer);
-          retryEventsOnLoop(userId, deviceId, apiKey);
         }
         eventsInRetry.incrementAndGet();
         retryBuffer.add(event);
+        userToDevices.computeIfAbsent(userId, key -> new HashSet<String>()).add(deviceId);
       }
     }
+    userToDevices.forEach(
+        (userId, deviceSet) -> {
+          deviceSet.forEach(
+              (deviceId) -> {
+                retryEventsOnLoop(userId, deviceId, apiKey);
+              });
+        });
+  }
+
+  protected static boolean shouldRetryForStatus(Status status) {
+    return (status == Status.INVALID
+        || status == Status.PAYLOAD_TOO_LARGE
+        || status == Status.RATELIMIT);
   }
 
   // The main entrance for the retry logic.
