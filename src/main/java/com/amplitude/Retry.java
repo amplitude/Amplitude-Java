@@ -169,12 +169,8 @@ class Retry {
                     }
                     eventCount -= numEventsRemoved;
                     eventsInRetry.addAndGet(-numEventsRemoved);
-                    // If we managed to remove all the events, break early
-                    if (eventCount < 1) {
-                      break;
-                    }
                   }
-                  if (!shouldRetry) {
+                  if (!shouldRetry || eventCount < 1) {
                     break;
                   }
                   if (shouldReduceEventCount && !isLastTry) {
