@@ -6,9 +6,9 @@ public class Response {
   protected int code;
   protected Status status;
   protected String error;
-  protected JSONObject SuccessBody;
-  protected JSONObject InvalidRequestBody;
-  protected JSONObject RateLimitBody;
+  protected JSONObject successBody;
+  protected JSONObject invalidRequestBody;
+  protected JSONObject rateLimitBody;
 
   protected static Response populateResponse(JSONObject json) {
     Response res = new Response();
@@ -17,39 +17,39 @@ public class Response {
     res.code = code;
     res.status = status;
     if (status == Status.SUCCESS) {
-      res.SuccessBody = new JSONObject();
-      res.SuccessBody.put("eventsIngested", json.getInt("events_ingested"));
-      res.SuccessBody.put("payloadSizeBytes", json.getInt("payload_size_bytes"));
-      res.SuccessBody.put("serverUploadTime", json.getLong("server_upload_time"));
+      res.successBody = new JSONObject();
+      res.successBody.put("eventsIngested", json.getInt("events_ingested"));
+      res.successBody.put("payloadSizeBytes", json.getInt("payload_size_bytes"));
+      res.successBody.put("serverUploadTime", json.getLong("server_upload_time"));
     } else if (status == Status.INVALID) {
-      res.InvalidRequestBody = new JSONObject();
+      res.invalidRequestBody = new JSONObject();
       res.error = Utils.getStringValueWithKey(json, "error");
-      res.InvalidRequestBody.put(
+      res.invalidRequestBody.put(
           "missingField", Utils.getStringValueWithKey(json, "missing_field"));
       JSONObject eventsWithInvalidFields =
           Utils.getJSONObjectValueWithKey(json, "events_with_invalid_fields");
-      res.InvalidRequestBody.put("eventsWithInvalidFields", eventsWithInvalidFields);
+      res.invalidRequestBody.put("eventsWithInvalidFields", eventsWithInvalidFields);
       JSONObject eventsWithMissingFields =
           Utils.getJSONObjectValueWithKey(json, "events_with_missing_fields");
-      res.InvalidRequestBody.put("eventsWithMissingFields", eventsWithMissingFields);
+      res.invalidRequestBody.put("eventsWithMissingFields", eventsWithMissingFields);
     } else if (status == Status.PAYLOAD_TOO_LARGE) {
       res.error = Utils.getStringValueWithKey(json, "error");
     } else if (status == Status.RATELIMIT) {
       res.error = Utils.getStringValueWithKey(json, "error");
-      res.RateLimitBody = new JSONObject();
-      res.RateLimitBody.put("epsThreshold", json.getInt("eps_threshold"));
+      res.rateLimitBody = new JSONObject();
+      res.rateLimitBody.put("epsThreshold", json.getInt("eps_threshold"));
       JSONObject throttledDevices = Utils.getJSONObjectValueWithKey(json, "throttled_devices");
-      res.RateLimitBody.put("throttledDevices", throttledDevices);
+      res.rateLimitBody.put("throttledDevices", throttledDevices);
       JSONObject throttledUsers = Utils.getJSONObjectValueWithKey(json, "throttled_users");
-      res.RateLimitBody.put("throttledUsers", throttledUsers);
-      res.RateLimitBody.put(
+      res.rateLimitBody.put("throttledUsers", throttledUsers);
+      res.rateLimitBody.put(
           "throttledEvents", Utils.convertJSONArrayToIntArray(json, "throttled_events"));
       JSONObject exceededDailyQuotaDevices =
           Utils.getJSONObjectValueWithKey(json, "exceeded_daily_quota_devices");
-      res.RateLimitBody.put("exceededDailyQuotaDevices", exceededDailyQuotaDevices);
+      res.rateLimitBody.put("exceededDailyQuotaDevices", exceededDailyQuotaDevices);
       JSONObject exceededDailyQuotaUsers =
           Utils.getJSONObjectValueWithKey(json, "exceeded_daily_quota_users");
-      res.RateLimitBody.put("exceededDailyQuotaUsers", exceededDailyQuotaUsers);
+      res.rateLimitBody.put("exceededDailyQuotaUsers", exceededDailyQuotaUsers);
     } else if (status == Status.SYSTEM_ERROR) {
       res.error = json.getString("error");
       res.code = 0;

@@ -88,11 +88,11 @@ class Retry {
   }
 
   private static int[] collectInvalidEventIndices(Response response) {
-    if (response.status == Status.INVALID && response.InvalidRequestBody != null) {
+    if (response.status == Status.INVALID && response.invalidRequestBody != null) {
       List<Integer> invalidFieldsIndices =
-          collectIndicesWithRequestBody(response.InvalidRequestBody, "eventsWithInvalidFields");
+          collectIndicesWithRequestBody(response.invalidRequestBody, "eventsWithInvalidFields");
       List<Integer> missingFieldsIndices =
-          collectIndicesWithRequestBody(response.InvalidRequestBody, "eventsWithMissingFields");
+          collectIndicesWithRequestBody(response.invalidRequestBody, "eventsWithMissingFields");
       invalidFieldsIndices.addAll(missingFieldsIndices);
       Collections.sort(invalidFieldsIndices);
       int[] allInvalidEventIndices = invalidFieldsIndices.stream().mapToInt(i -> i).toArray();
@@ -108,11 +108,11 @@ class Retry {
     boolean shouldReduceEventCount = false;
     int[] eventIndicesToRemove = new int[] {};
     if (onceReponse.status == Status.RATELIMIT) {
-      if (onceReponse.RateLimitBody != null) {
+      if (onceReponse.rateLimitBody != null) {
         JSONObject exceededDailyQuotaUsers =
-            onceReponse.RateLimitBody.getJSONObject("exceededDailyQuotaUsers");
+            onceReponse.rateLimitBody.getJSONObject("exceededDailyQuotaUsers");
         JSONObject exceededDailyQuotaDevices =
-            onceReponse.RateLimitBody.getJSONObject("exceededDailyQuotaDevices");
+            onceReponse.rateLimitBody.getJSONObject("exceededDailyQuotaDevices");
         if ((userId.length() > 0 && exceededDailyQuotaUsers.has(userId))
             || (deviceId.length() > 0 && exceededDailyQuotaDevices.has(deviceId))) {
           shouldRetry = false;
@@ -192,12 +192,12 @@ class Retry {
   private static void onEventsError(List<Event> events, Response response, String apiKey) {
     List<Event> eventsToRetry = events;
     // Filter invalid event out based on the response code.
-    if (response.status == Status.RATELIMIT && response.RateLimitBody != null) {
+    if (response.status == Status.RATELIMIT && response.rateLimitBody != null) {
       // JSONObject deviceId as key, number as value
       JSONObject exceededDailyQuotaUsers =
-          response.RateLimitBody.getJSONObject("exceededDailyQuotaUsers");
+          response.rateLimitBody.getJSONObject("exceededDailyQuotaUsers");
       JSONObject exceededDailyQuotaDevices =
-          response.RateLimitBody.getJSONObject("exceededDailyQuotaDevices");
+          response.rateLimitBody.getJSONObject("exceededDailyQuotaDevices");
       eventsToRetry =
           events.stream()
               .filter(
@@ -207,14 +207,14 @@ class Retry {
                               && exceededDailyQuotaDevices.has(event.deviceId))))
               .collect(Collectors.toList());
     } else if (response.status == Status.INVALID) {
-      if ((response.InvalidRequestBody != null
-              && response.InvalidRequestBody.has("missingField")
-              && response.InvalidRequestBody.getString("missingField").length() > 0)
+      if ((response.invalidRequestBody != null
+              && response.invalidRequestBody.has("missingField")
+              && response.invalidRequestBody.getString("missingField").length() > 0)
           || events.size() == 1) {
         // Return early if there's an issue with the entire payload
         // or if there's only one event and its invalid
         return;
-      } else if (response.InvalidRequestBody != null) {
+      } else if (response.invalidRequestBody != null) {
         // Filter out invalid events id
         int[] invalidEventIndices = collectInvalidEventIndices(response);
         eventsToRetry =
