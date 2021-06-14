@@ -15,11 +15,12 @@ import java.io.IOException;
 import java.util.List;
 
 public class HttpCall {
+
   /*
    * Use HTTPUrlConnection object to make async HTTP request,
    * using data from event like device, class name, event props, etc.
    *
-   * @return The response code
+   * @return The response object which contains a code and other information
    */
   protected static Response syncHttpCallWithEventsBuffer(List<Event> events, String apiKey) {
     HttpsURLConnection connection;
