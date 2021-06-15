@@ -40,6 +40,7 @@ public class Event {
   /** The current version of your application. */
   public String appVersion;
 
+  /** Legacy SDK API, only for use with older API. The application's version name. */
   public String versionName;
 
   /** Platform of the device. */
