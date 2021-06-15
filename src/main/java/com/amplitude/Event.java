@@ -167,6 +167,10 @@ public class Event {
    */
   public JSONObject groups;
 
+  /**
+   * This feature is only available to Enterprise customers who have purchased the Accounts add-on.
+   * A dictionary of key-value pairs that represent data tied to the groups.
+   */
   public JSONObject groupProperties;
 
   /**
