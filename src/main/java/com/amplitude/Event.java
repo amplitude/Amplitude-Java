@@ -131,7 +131,7 @@ public class Event {
    * An identifier for the item purchased. You must send a price and quantity or revenue with this
    * field.
    */
-  public int productId;
+  public String productId;
 
   /**
    * The type of revenue for the item purchased. You must send a price and quantity or revenue with
@@ -151,7 +151,7 @@ public class Event {
    * want to associate events with a particular system. A session_id of -1 is the same as no
    * session_id specified.
    */
-  public int sessionId;
+  public long sessionId;
 
   /**
    * A unique identifier for the event. We will deduplicate subsequent events sent with an insert_id
