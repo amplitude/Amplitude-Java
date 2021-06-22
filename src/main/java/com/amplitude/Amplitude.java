@@ -18,7 +18,9 @@ public class Amplitude {
 
   private Queue<Event> eventsToSend;
   private boolean aboutToStartFlushing;
-  private Constants.httpCallMode httpCallMode;
+
+  private HttpCallMode httpCallMode;
+  private HttpCall httpCall;
 
   /**
    * Private internal constructor for Amplitude.
@@ -28,7 +30,7 @@ public class Amplitude {
     logger = new AmplitudeLog();
     eventsToSend = new ConcurrentLinkedQueue<>();
     aboutToStartFlushing = false;
-    httpCallMode = Constants.httpCallMode.REGULAR_HTTPCALL;
+    httpCallMode = HttpCallMode.REGULAR_HTTPCALL;
   }
 
   /**
@@ -59,12 +61,16 @@ public class Amplitude {
    */
   public void init(String key) {
     apiKey = key;
+    httpCall = new GeneralHttpCall(apiKey);
   }
 
-  public void isBatchMode(Boolean isBatchMode) {
-    httpCallMode = Constants.httpCallMode.REGULAR_HTTPCALL;
+  public void setHttpCallMode(Boolean isBatchMode) {
     if (isBatchMode) {
-      httpCallMode = Constants.httpCallMode.BATCH_HTTPCALL;
+      httpCallMode = HttpCallMode.BATCH_HTTPCALL;
+      httpCall = new BatchHttpCall(apiKey);
+    } else {
+      httpCallMode = HttpCallMode.REGULAR_HTTPCALL;
+      httpCall = new GeneralHttpCall(apiKey);
     }
   }
 
@@ -107,6 +113,10 @@ public class Amplitude {
     }
   }
 
+  private Response getHttpCall(List<Event> eventsInTransit) {
+    return httpCall.syncHttpCallWithEventsBuffer(eventsInTransit);
+  }
+
   /**
    * Forces events currently in the event buffer to be sent to Amplitude API endpoint.
    * Only one thread may flush at a time. Next flushes will happen immediately after.
@@ -117,17 +127,11 @@ public class Amplitude {
       eventsToSend.clear();
       CompletableFuture.supplyAsync(
           () -> {
-            Response response = null;
-            if (httpCallMode == Constants.httpCallMode.REGULAR_HTTPCALL) {
-              response =
-                  new GeneralHttpCall(eventsInTransit, apiKey).syncHttpCallWithEventsBuffer();
-            } else {
-              response = new BatchHttpCall(eventsInTransit, apiKey).syncHttpCallWithEventsBuffer();
-            }
+            Response response = getHttpCall(eventsInTransit);
             Status status = response.status;
 
             if (Retry.shouldRetryForStatus(status)) {
-              Retry.sendEventsWithRetry(eventsInTransit, apiKey, response, httpCallMode);
+              Retry.sendEventsWithRetry(eventsInTransit, response, httpCall);
             }
             return null;
           });
