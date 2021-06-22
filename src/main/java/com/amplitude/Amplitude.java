@@ -18,7 +18,7 @@ public class Amplitude {
 
   private Queue<Event> eventsToSend;
   private boolean aboutToStartFlushing;
-  private String httpCallUrlConfig;
+  private Constants.httpCallMode httpCallMode;
 
   /**
    * Private internal constructor for Amplitude.
@@ -28,7 +28,7 @@ public class Amplitude {
     logger = new AmplitudeLog();
     eventsToSend = new ConcurrentLinkedQueue<>();
     aboutToStartFlushing = false;
-    httpCallUrlConfig = Constants.API_URL;
+    httpCallMode = Constants.httpCallMode.REGULAR_HTTPCALL;
   }
 
   /**
@@ -62,9 +62,9 @@ public class Amplitude {
   }
 
   public void isBatchMode(Boolean isBatchMode) {
-    httpCallUrlConfig = Constants.API_URL;
+    httpCallMode = Constants.httpCallMode.REGULAR_HTTPCALL;
     if (isBatchMode) {
-      httpCallUrlConfig = Constants.BATCH_API_URL;
+      httpCallMode = Constants.httpCallMode.BATCH_HTTPCALL;
     }
   }
 
@@ -118,19 +118,16 @@ public class Amplitude {
       CompletableFuture.supplyAsync(
           () -> {
             Response response = null;
-            if (httpCallUrlConfig == Constants.API_URL) {
+            if (httpCallMode == Constants.httpCallMode.REGULAR_HTTPCALL) {
               response =
-                  new GeneralHttpCall(eventsInTransit, apiKey, httpCallUrlConfig)
-                      .syncHttpCallWithEventsBuffer();
+                  new GeneralHttpCall(eventsInTransit, apiKey).syncHttpCallWithEventsBuffer();
             } else {
-              response =
-                      new BatchHttpCall(eventsInTransit, apiKey, httpCallUrlConfig)
-                              .syncHttpCallWithEventsBuffer();
+              response = new BatchHttpCall(eventsInTransit, apiKey).syncHttpCallWithEventsBuffer();
             }
             Status status = response.status;
 
             if (Retry.shouldRetryForStatus(status)) {
-              Retry.sendEventsWithRetry(eventsInTransit, apiKey, response, httpCallUrlConfig);
+              Retry.sendEventsWithRetry(eventsInTransit, apiKey, response, httpCallMode);
             }
             return null;
           });

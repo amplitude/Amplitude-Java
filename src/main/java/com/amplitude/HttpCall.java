@@ -25,7 +25,7 @@ public abstract class HttpCall {
     public List<Event> events;
     public String apiUrl;
 
-    public HttpCall(List<Event> events, String apiKey, String apiUrl) {
+    protected HttpCall(List<Event> events, String apiKey, String apiUrl) {
         this.apiKey =  apiKey;
         this.events = events;
         this.apiUrl = apiUrl;
@@ -37,7 +37,6 @@ public abstract class HttpCall {
         int responseCode = 500;
         Response responseBody = new Response();
         try {
-            System.out.println(apiUrl);
             connection = (HttpsURLConnection) new URL(apiUrl).openConnection();
             connection.setRequestMethod("POST");
             connection.setRequestProperty("Content-Type", "application/json");
