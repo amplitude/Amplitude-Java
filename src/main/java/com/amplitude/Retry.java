@@ -102,8 +102,11 @@ class Retry {
   }
 
   private static RetryEventsOnceResult retryEventsOnce(
-      String userId, String deviceId, List<Event> events, String apiKey) {
-    Response onceReponse = HttpCall.syncHttpCallWithEventsBuffer(events, apiKey);
+      String userId, String deviceId, List<Event> events, String apiKey, String httpCallUrlConfig) {
+    Response onceReponse = null;
+    if (httpCallUrlConfig == Constants.API_URL)
+        onceReponse = new GeneralHttpCall(events, apiKey, Constants.API_URL).syncHttpCallWithEventsBuffer();
+    else  onceReponse = new BatchHttpCall(events, apiKey, Constants.BATCH_API_URL).syncHttpCallWithEventsBuffer();
     boolean shouldRetry = true;
     boolean shouldReduceEventCount = false;
     int[] eventIndicesToRemove = new int[] {};
@@ -134,7 +137,7 @@ class Retry {
     return new RetryEventsOnceResult(shouldRetry, shouldReduceEventCount, eventIndicesToRemove);
   }
 
-  private static void retryEventsOnLoop(String userId, String deviceId, String apiKey) {
+  private static void retryEventsOnLoop(String userId, String deviceId, String apiKey, String httpCallUrlConfig) {
     Thread retryThread =
         new Thread(
             () -> {
@@ -153,7 +156,7 @@ class Retry {
                   boolean isLastTry = numRetries == Constants.RETRY_TIMEOUTS.length - 1;
                   List<Event> eventsToRetry = eventsBuffer.subList(0, eventCount);
                   RetryEventsOnceResult retryResult =
-                      retryEventsOnce(userId, deviceId, eventsToRetry, apiKey);
+                      retryEventsOnce(userId, deviceId, eventsToRetry, apiKey, httpCallUrlConfig);
                   boolean shouldRetry = retryResult.shouldRetry;
                   boolean shouldReduceEventCount = retryResult.shouldReduceEventCount;
                   int[] eventIndicesToRemove = retryResult.eventIndicesToRemove;
@@ -185,7 +188,7 @@ class Retry {
   }
 
   // Call this function if event not in current Retry list.
-  private static void onEventsError(List<Event> events, Response response, String apiKey) {
+  private static void onEventsError(List<Event> events, Response response, String apiKey, String httpCallUrlConfig) {
     List<Event> eventsToRetry = events;
     // Filter invalid event out based on the response code.
     if (response.status == Status.RATELIMIT && response.rateLimitBody != null) {
@@ -246,7 +249,7 @@ class Retry {
         (userId, deviceSet) -> {
           deviceSet.forEach(
               (deviceId) -> {
-                retryEventsOnLoop(userId, deviceId, apiKey);
+                retryEventsOnLoop(userId, deviceId, apiKey, httpCallUrlConfig);
               });
         });
   }
@@ -258,10 +261,10 @@ class Retry {
   }
 
   // The main entrance for the retry logic.
-  protected static void sendEventsWithRetry(List<Event> events, String apiKey, Response response) {
+  protected static void sendEventsWithRetry(List<Event> events, String apiKey, Response response, String httpCallUrlConfig) {
     List<Event> eventsToSend = pruneEvent(events);
     if (eventsInRetry.intValue() < Constants.MAX_CACHED_EVENTS) {
-      onEventsError(eventsToSend, response, apiKey);
+      onEventsError(eventsToSend, response, apiKey, httpCallUrlConfig);
     }
   }
 }

@@ -18,6 +18,7 @@ public class Amplitude {
 
   private Queue<Event> eventsToSend;
   private boolean aboutToStartFlushing;
+  private String httpCallUrlConfig;
 
   /**
    * Private internal constructor for Amplitude.
@@ -27,6 +28,7 @@ public class Amplitude {
     logger = new AmplitudeLog();
     eventsToSend = new ConcurrentLinkedQueue<>();
     aboutToStartFlushing = false;
+    httpCallUrlConfig = Constants.API_URL;
   }
 
   /**
@@ -57,6 +59,13 @@ public class Amplitude {
    */
   public void init(String key) {
     apiKey = key;
+  }
+
+  public void isBatchMode(Boolean isBatchMode) {
+    httpCallUrlConfig = Constants.API_URL;
+    if (isBatchMode) {
+      httpCallUrlConfig = Constants.BATCH_API_URL;
+    }
   }
 
   /**
@@ -108,11 +117,20 @@ public class Amplitude {
       eventsToSend.clear();
       CompletableFuture.supplyAsync(
           () -> {
-            Response response = HttpCall.syncHttpCallWithEventsBuffer(eventsInTransit, apiKey);
+            Response response = null;
+            if (httpCallUrlConfig == Constants.API_URL) {
+              response =
+                  new GeneralHttpCall(eventsInTransit, apiKey, httpCallUrlConfig)
+                      .syncHttpCallWithEventsBuffer();
+            } else {
+              response =
+                      new BatchHttpCall(eventsInTransit, apiKey, httpCallUrlConfig)
+                              .syncHttpCallWithEventsBuffer();
+            }
             Status status = response.status;
 
             if (Retry.shouldRetryForStatus(status)) {
-              Retry.sendEventsWithRetry(eventsInTransit, apiKey, response);
+              Retry.sendEventsWithRetry(eventsInTransit, apiKey, response, httpCallUrlConfig);
             }
             return null;
           });
