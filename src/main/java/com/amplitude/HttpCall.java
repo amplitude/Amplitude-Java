@@ -17,7 +17,7 @@ import java.util.List;
 enum HttpCallMode {
   REGULAR_HTTPCALL,
   BATCH_HTTPCALL
-};
+}
 
 public abstract class HttpCall {
   /*
@@ -26,8 +26,7 @@ public abstract class HttpCall {
    *
    * @return The response object which contains a code and other information
    */
-  public String apiKey;
-  public String apiUrl;
+  private String apiKey;
 
   protected HttpCall(String apiKey) {
     this.apiKey = apiKey;
@@ -36,13 +35,13 @@ public abstract class HttpCall {
   protected abstract String getApiUrl();
 
   protected Response syncHttpCallWithEventsBuffer(List<Event> events) {
-    this.apiUrl = getApiUrl();
+    String apiUrl = getApiUrl();
     HttpsURLConnection connection;
     InputStream inputStream = null;
     int responseCode = 500;
     Response responseBody = new Response();
     try {
-      connection = (HttpsURLConnection) new URL(this.apiUrl).openConnection();
+      connection = (HttpsURLConnection) new URL(apiUrl).openConnection();
       connection.setRequestMethod("POST");
       connection.setRequestProperty("Content-Type", "application/json");
       connection.setRequestProperty("Accept", "application/json");

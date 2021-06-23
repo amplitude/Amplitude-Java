@@ -30,7 +30,6 @@ public class Amplitude {
     logger = new AmplitudeLog();
     eventsToSend = new ConcurrentLinkedQueue<>();
     aboutToStartFlushing = false;
-    httpCallMode = HttpCallMode.REGULAR_HTTPCALL;
   }
 
   /**
@@ -64,7 +63,7 @@ public class Amplitude {
    */
   public void init(String key) {
     apiKey = key;
-    httpCall = new GeneralHttpCall(apiKey);
+    updateHttpCall(HttpCallMode.REGULAR_HTTPCALL);
   }
 
   /**
@@ -78,12 +77,12 @@ public class Amplitude {
   }
 
   private void updateHttpCall(HttpCallMode updatedHttpCallMode) {
-    if (updatedHttpCallMode != httpCallMode) {
-      if (updatedHttpCallMode == HttpCallMode.BATCH_HTTPCALL) {
-        httpCall = new BatchHttpCall(apiKey);
-      } else if (updatedHttpCallMode == HttpCallMode.REGULAR_HTTPCALL) {
-        httpCall = new GeneralHttpCall(apiKey);
-      }
+    if (httpCallMode == null || httpCallMode != updatedHttpCallMode) {
+      httpCallMode = updatedHttpCallMode;
+      httpCall =
+          (updatedHttpCallMode == HttpCallMode.BATCH_HTTPCALL)
+              ? new BatchHttpCall(apiKey)
+              : new GeneralHttpCall(apiKey);
     }
   }
 
@@ -139,7 +138,6 @@ public class Amplitude {
       CompletableFuture.supplyAsync(
           () -> {
             Response response = httpCall.syncHttpCallWithEventsBuffer(eventsInTransit);
-            ;
             Status status = response.status;
 
             if (Retry.shouldRetryForStatus(status)) {
