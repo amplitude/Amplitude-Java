@@ -29,20 +29,20 @@ public abstract class HttpCall {
   public String apiKey;
   public String apiUrl;
 
-  protected HttpCall(String apiKey, String apiUrl) {
+  protected HttpCall(String apiKey) {
     this.apiKey = apiKey;
-    this.apiUrl = apiUrl;
   }
 
+  protected abstract String getApiUrl();
+
   protected Response syncHttpCallWithEventsBuffer(List<Event> events) {
-    System.out.println("*********");
-    System.out.println(this.apiUrl);
+    this.apiUrl = getApiUrl();
     HttpsURLConnection connection;
     InputStream inputStream = null;
     int responseCode = 500;
     Response responseBody = new Response();
     try {
-      connection = (HttpsURLConnection) new URL(apiUrl).openConnection();
+      connection = (HttpsURLConnection) new URL(this.apiUrl).openConnection();
       connection.setRequestMethod("POST");
       connection.setRequestProperty("Content-Type", "application/json");
       connection.setRequestProperty("Accept", "application/json");

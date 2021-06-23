@@ -102,8 +102,8 @@ class Retry {
   }
 
   private static RetryEventsOnceResult retryEventsOnce(
-      String userId, String deviceId, List<Event> events,HttpCall httpCall) {
-    Response onceReponse =  httpCall.syncHttpCallWithEventsBuffer(events);
+      String userId, String deviceId, List<Event> events, HttpCall httpCall) {
+    Response onceReponse = httpCall.syncHttpCallWithEventsBuffer(events);
     boolean shouldRetry = true;
     boolean shouldReduceEventCount = false;
     int[] eventIndicesToRemove = new int[] {};
@@ -134,7 +134,7 @@ class Retry {
     return new RetryEventsOnceResult(shouldRetry, shouldReduceEventCount, eventIndicesToRemove);
   }
 
-  private static void retryEventsOnLoop(String userId, String deviceId,HttpCall httpCall) {
+  private static void retryEventsOnLoop(String userId, String deviceId, HttpCall httpCall) {
     Thread retryThread =
         new Thread(
             () -> {
@@ -258,7 +258,8 @@ class Retry {
   }
 
   // The main entrance for the retry logic.
-  protected static void sendEventsWithRetry(List<Event> events, Response response, HttpCall httpCall) {
+  protected static void sendEventsWithRetry(
+      List<Event> events, Response response, HttpCall httpCall) {
     List<Event> eventsToSend = pruneEvent(events);
     if (eventsInRetry.intValue() < Constants.MAX_CACHED_EVENTS) {
       onEventsError(eventsToSend, response, httpCall);
