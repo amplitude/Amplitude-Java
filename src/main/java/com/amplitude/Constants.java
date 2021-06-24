@@ -3,6 +3,8 @@ package com.amplitude;
 public interface Constants {
 
   String API_URL = "https://api2.amplitude.com/2/httpapi";
+  String BATCH_API_URL = "https://api2.amplitude.com/batch";
+
   int NETWORK_TIMEOUT_MILLIS = 10000;
   String SDK_LIBRARY = "amplitude-java";
   String SDK_VERSION = "1.2.1";

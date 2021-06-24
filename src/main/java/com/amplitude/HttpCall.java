@@ -14,21 +14,34 @@ import java.io.IOException;
 
 import java.util.List;
 
-public class HttpCall {
+enum HttpCallMode {
+  REGULAR_HTTPCALL,
+  BATCH_HTTPCALL
+}
 
+public abstract class HttpCall {
   /*
    * Use HTTPUrlConnection object to make async HTTP request,
    * using data from event like device, class name, event props, etc.
    *
    * @return The response object which contains a code and other information
    */
-  protected static Response syncHttpCallWithEventsBuffer(List<Event> events, String apiKey) {
+  private String apiKey;
+
+  protected HttpCall(String apiKey) {
+    this.apiKey = apiKey;
+  }
+
+  protected abstract String getApiUrl();
+
+  protected Response syncHttpCallWithEventsBuffer(List<Event> events) {
+    String apiUrl = getApiUrl();
     HttpsURLConnection connection;
     InputStream inputStream = null;
     int responseCode = 500;
     Response responseBody = new Response();
     try {
-      connection = (HttpsURLConnection) new URL(Constants.API_URL).openConnection();
+      connection = (HttpsURLConnection) new URL(apiUrl).openConnection();
       connection.setRequestMethod("POST");
       connection.setRequestProperty("Content-Type", "application/json");
       connection.setRequestProperty("Accept", "application/json");
@@ -37,7 +50,7 @@ public class HttpCall {
       connection.setDoOutput(true);
 
       JSONObject bodyJson = new JSONObject();
-      bodyJson.put("api_key", apiKey);
+      bodyJson.put("api_key", this.apiKey);
 
       JSONArray eventsArr = new JSONArray();
       for (int i = 0; i < events.size(); i++) {
