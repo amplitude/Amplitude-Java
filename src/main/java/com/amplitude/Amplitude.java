@@ -1,5 +1,7 @@
 package com.amplitude;
 
+import com.amplitude.exception.AmplitudeInvalidAPIKeyException;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -81,8 +83,8 @@ public class Amplitude {
       httpCallMode = updatedHttpCallMode;
       httpCall =
           (updatedHttpCallMode == HttpCallMode.BATCH_HTTPCALL)
-              ? new BatchHttpCall(apiKey)
-              : new GeneralHttpCall(apiKey);
+              ? new BatchHttpCall(apiKey, logger)
+              : new GeneralHttpCall(apiKey, logger);
     }
   }
 
@@ -137,7 +139,11 @@ public class Amplitude {
       eventsToSend.clear();
       CompletableFuture.supplyAsync(
           () -> {
-            Response response = httpCall.syncHttpCallWithEventsBuffer(eventsInTransit);
+            Response response = null;
+            try {
+              response = httpCall.syncHttpCallWithEventsBuffer(eventsInTransit);
+            } catch (AmplitudeInvalidAPIKeyException e) {
+            }
             Status status = response.status;
 
             if (Retry.shouldRetryForStatus(status)) {
