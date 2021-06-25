@@ -29,15 +29,15 @@ public abstract class HttpCall {
    * @return The response object which contains a code and other information
    */
   private String apiKey;
-  private AmplitudeLog logger;
-  protected HttpCall(String apiKey, AmplitudeLog logger) {
+
+  protected HttpCall(String apiKey) {
     this.apiKey = apiKey;
-    this.logger = logger;
   }
 
   protected abstract String getApiUrl();
 
-  protected Response syncHttpCallWithEventsBuffer(List<Event> events) throws AmplitudeInvalidAPIKeyException {
+  protected Response syncHttpCallWithEventsBuffer(List<Event> events)
+      throws AmplitudeInvalidAPIKeyException {
     String apiUrl = getApiUrl();
     HttpsURLConnection connection;
     InputStream inputStream = null;
@@ -82,8 +82,6 @@ public abstract class HttpCall {
       }
       JSONObject responseJson = new JSONObject(sb.toString());
       responseBody = Response.populateResponse(responseJson);
-    } catch(AmplitudeInvalidAPIKeyException e) {
-      this.logger.error("AmplitudeInvalidAPIKeyException", e.getMessage());
     } catch (IOException e) {
       // This handles UnknownHostException, when the SDK has no internet.
       // Also SocketTimeoutException, when the HTTP request times out.
@@ -99,7 +97,7 @@ public abstract class HttpCall {
 
         }
       }
-      return responseBody;
     }
+    return responseBody;
   }
 }

@@ -2,6 +2,7 @@ package com.amplitude;
 
 import com.amplitude.exception.AmplitudeInvalidAPIKeyException;
 
+import java.rmi.ServerException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -83,8 +84,8 @@ public class Amplitude {
       httpCallMode = updatedHttpCallMode;
       httpCall =
           (updatedHttpCallMode == HttpCallMode.BATCH_HTTPCALL)
-              ? new BatchHttpCall(apiKey, logger)
-              : new GeneralHttpCall(apiKey, logger);
+              ? new BatchHttpCall(apiKey)
+              : new GeneralHttpCall(apiKey);
     }
   }
 
@@ -137,20 +138,27 @@ public class Amplitude {
     if (eventsToSend.size() > 0) {
       List<Event> eventsInTransit = new ArrayList<>(eventsToSend);
       eventsToSend.clear();
-      CompletableFuture.supplyAsync(
-          () -> {
-            Response response = null;
-            try {
-              response = httpCall.syncHttpCallWithEventsBuffer(eventsInTransit);
-            } catch (AmplitudeInvalidAPIKeyException e) {
-            }
-            Status status = response.status;
+      CompletableFuture<Response> asyncHandler =
+          CompletableFuture.supplyAsync(
+              () -> {
+                Response response = null;
+                try {
+                  response = httpCall.syncHttpCallWithEventsBuffer(eventsInTransit);
+                } catch (AmplitudeInvalidAPIKeyException e) {
+                  e.printStackTrace();
+                }
+                return response;
+              });
 
-            if (Retry.shouldRetryForStatus(status)) {
-              Retry.sendEventsWithRetry(eventsInTransit, response, httpCall);
-            }
-            return null;
-          });
+      try {
+        Response response = asyncHandler.join();
+        Status status = response.status;
+        if (Retry.shouldRetryForStatus(status)) {
+          Retry.sendEventsWithRetry(eventsInTransit, response, httpCall);
+        }
+      } catch (CompletionException e) {
+        e.printStackTrace();
+      }
     }
   }
 }
