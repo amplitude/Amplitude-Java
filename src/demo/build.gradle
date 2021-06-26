@@ -29,7 +29,7 @@ sourceSets.main.java.srcDirs = ['java']
 dependencies {
     implementation 'org.json:json:20201115'
     implementation 'org.springframework.boot:spring-boot-starter-web'
-    compile project(':main')
+    implementation project(':main')
 }
 
 application {

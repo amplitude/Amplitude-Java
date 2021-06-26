@@ -24,7 +24,7 @@ idea {
 sourceSets.test.java.srcDirs = ['java']
 
 dependencies {
-    testCompile project(':main')
+    testImplementation project(':main')
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.7.2'
     testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.7.2'
 }
