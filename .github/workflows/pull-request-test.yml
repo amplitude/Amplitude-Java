@@ -12,8 +12,6 @@ jobs:
           java-version: '8'
           distribution: 'adopt'
       - uses: actions/checkout@v2
-      - name: Grant execute permission for gradlew
-        run: chmod +x gradlew
       - name: Test with Gradle
-        run: ./gradlew -b ci.gradle test:test
+        run: gradle test:test
 
