@@ -94,7 +94,6 @@ public abstract class HttpCall {
         try {
           inputStream.close();
         } catch (IOException e) {
-
         }
       }
     }

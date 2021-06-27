@@ -15,7 +15,6 @@ public class Response {
   protected static Response populateResponse(JSONObject json) throws AmplitudeInvalidAPIKeyException {
     Response res = new Response();
     int code = json.getInt("code");
-    String errorMsg = Utils.getStringValueWithKey(json, "error");
     Status status = Status.getCodeStatus(code);
     res.code = code;
     res.status = status;

@@ -104,14 +104,9 @@ class Retry {
   }
 
   private static RetryEventsOnceResult retryEventsOnce(
-      String userId, String deviceId, List<Event> events, HttpCall httpCall) {
-    Response onceReponse = null;
-    try {
-      onceReponse = httpCall.syncHttpCallWithEventsBuffer(events);
-    } catch (AmplitudeInvalidAPIKeyException e) {
-      e.printStackTrace();
-    }
-
+      String userId, String deviceId, List<Event> events, HttpCall httpCall)
+      throws AmplitudeInvalidAPIKeyException {
+    Response onceReponse = httpCall.syncHttpCallWithEventsBuffer(events);
     boolean shouldRetry = true;
     boolean shouldReduceEventCount = false;
     int[] eventIndicesToRemove = new int[] {};
@@ -185,6 +180,11 @@ class Retry {
                     eventCount /= 2;
                   }
                 } catch (InterruptedException e) {
+                } catch (AmplitudeInvalidAPIKeyException e) {
+                  // The retry logic should only be executed after the API key checking passed.
+                  // This catch AmplitudeInvalidAPIKeyException is just for handling
+                  // retryEventsOnce in thread.
+                  Thread.currentThread().interrupt();
                 }
               }
               eventsInRetry.addAndGet(-eventCount);
