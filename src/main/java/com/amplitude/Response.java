@@ -12,7 +12,16 @@ public class Response {
   protected JSONObject invalidRequestBody;
   protected JSONObject rateLimitBody;
 
-  protected static Response populateResponse(JSONObject json) throws AmplitudeInvalidAPIKeyException {
+  protected static Boolean hasInvalidAPIKey(String errorMsg) {
+    String invalidAPIKeyError = "Invalid API key: .*";
+    if (errorMsg.matches(invalidAPIKeyError)) {
+      return true;
+    }
+    return false;
+  }
+
+  protected static Response populateResponse(JSONObject json)
+      throws AmplitudeInvalidAPIKeyException {
     Response res = new Response();
     int code = json.getInt("code");
     Status status = Status.getCodeStatus(code);
@@ -25,8 +34,7 @@ public class Response {
       res.successBody.put("serverUploadTime", json.getLong("server_upload_time"));
     } else if (status == Status.INVALID) {
       res.error = Utils.getStringValueWithKey(json, "error");
-      if (Status.hasInvalidAPIKey(res.error))
-        throw new AmplitudeInvalidAPIKeyException(res.error);
+      if (hasInvalidAPIKey(res.error)) throw new AmplitudeInvalidAPIKeyException(res.error);
       res.invalidRequestBody = new JSONObject();
       res.invalidRequestBody.put(
           "missingField", Utils.getStringValueWithKey(json, "missing_field"));

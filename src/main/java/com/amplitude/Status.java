@@ -20,14 +20,6 @@ public enum Status {
   /** environment error.. E.g. disconnected from network */
   SYSTEM_ERROR;
 
-  protected static Boolean hasInvalidAPIKey(String errorMsg){
-    String invalidAPIKeyError = "Invalid API key: .*";
-    if (errorMsg.matches(invalidAPIKeyError)) {
-      return true;
-    }
-    return false;
-  }
-
   protected static Status getCodeStatus(int code) {
     if (code >= 200 && code < 300) {
       return Status.SUCCESS;

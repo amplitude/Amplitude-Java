@@ -180,6 +180,7 @@ class Retry {
                     eventCount /= 2;
                   }
                 } catch (InterruptedException e) {
+                  Thread.currentThread().interrupt();
                 } catch (AmplitudeInvalidAPIKeyException e) {
                   // The retry logic should only be executed after the API key checking passed.
                   // This catch AmplitudeInvalidAPIKeyException is just for handling
