@@ -12,12 +12,9 @@ public class Response {
   protected JSONObject invalidRequestBody;
   protected JSONObject rateLimitBody;
 
-  protected static Boolean hasInvalidAPIKey(String errorMsg) {
+  private static boolean hasInvalidAPIKey(String errorMsg) {
     String invalidAPIKeyError = "Invalid API key: .*";
-    if (errorMsg.matches(invalidAPIKeyError)) {
-      return true;
-    }
-    return false;
+    return errorMsg.matches(invalidAPIKeyError);
   }
 
   protected static Response populateResponse(JSONObject json)
