@@ -1,5 +1,7 @@
 package com.amplitude;
 
+import com.amplitude.exception.AmplitudeInvalidAPIKeyException;
+
 import org.json.JSONObject;
 
 public class Response {
@@ -10,7 +12,13 @@ public class Response {
   protected JSONObject invalidRequestBody;
   protected JSONObject rateLimitBody;
 
-  protected static Response populateResponse(JSONObject json) {
+  private static boolean hasInvalidAPIKey(String errorMsg) {
+    String invalidAPIKeyError = "Invalid API key: .*";
+    return errorMsg.matches(invalidAPIKeyError);
+  }
+
+  protected static Response populateResponse(JSONObject json)
+      throws AmplitudeInvalidAPIKeyException {
     Response res = new Response();
     int code = json.getInt("code");
     Status status = Status.getCodeStatus(code);
@@ -22,8 +30,9 @@ public class Response {
       res.successBody.put("payloadSizeBytes", json.getInt("payload_size_bytes"));
       res.successBody.put("serverUploadTime", json.getLong("server_upload_time"));
     } else if (status == Status.INVALID) {
-      res.invalidRequestBody = new JSONObject();
       res.error = Utils.getStringValueWithKey(json, "error");
+      if (hasInvalidAPIKey(res.error)) throw new AmplitudeInvalidAPIKeyException(res.error);
+      res.invalidRequestBody = new JSONObject();
       res.invalidRequestBody.put(
           "missingField", Utils.getStringValueWithKey(json, "missing_field"));
       JSONObject eventsWithInvalidFields =

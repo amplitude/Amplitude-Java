@@ -1,5 +1,7 @@
 package com.amplitude;
 
+import com.amplitude.exception.AmplitudeInvalidAPIKeyException;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -136,15 +138,27 @@ public class Amplitude {
       List<Event> eventsInTransit = new ArrayList<>(eventsToSend);
       eventsToSend.clear();
       CompletableFuture.supplyAsync(
-          () -> {
-            Response response = httpCall.syncHttpCallWithEventsBuffer(eventsInTransit);
-            Status status = response.status;
-
-            if (Retry.shouldRetryForStatus(status)) {
-              Retry.sendEventsWithRetry(eventsInTransit, response, httpCall);
-            }
-            return null;
-          });
+              () -> {
+                Response response = null;
+                try {
+                  response = httpCall.syncHttpCallWithEventsBuffer(eventsInTransit);
+                } catch (AmplitudeInvalidAPIKeyException e) {
+                  throw new CompletionException(e);
+                }
+                return response;
+              })
+          .thenAcceptAsync(
+              response -> {
+                Status status = response.status;
+                if (Retry.shouldRetryForStatus(status)) {
+                  Retry.sendEventsWithRetry(eventsInTransit, response, httpCall);
+                }
+              })
+          .exceptionally(
+              exception -> {
+                logger.error("Invalid API Key", exception.getMessage());
+                return null;
+              });
     }
   }
 }

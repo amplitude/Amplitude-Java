@@ -1,5 +1,7 @@
 package com.amplitude;
 
+import com.amplitude.exception.AmplitudeInvalidAPIKeyException;
+
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -34,7 +36,8 @@ public abstract class HttpCall {
 
   protected abstract String getApiUrl();
 
-  protected Response syncHttpCallWithEventsBuffer(List<Event> events) {
+  protected Response syncHttpCallWithEventsBuffer(List<Event> events)
+      throws AmplitudeInvalidAPIKeyException {
     String apiUrl = getApiUrl();
     HttpsURLConnection connection;
     InputStream inputStream = null;
@@ -91,10 +94,9 @@ public abstract class HttpCall {
         try {
           inputStream.close();
         } catch (IOException e) {
-
         }
       }
-      return responseBody;
     }
+    return responseBody;
   }
 }

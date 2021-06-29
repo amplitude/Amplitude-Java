@@ -1,5 +1,7 @@
 package com.amplitude;
 
+import com.amplitude.exception.AmplitudeInvalidAPIKeyException;
+
 import org.json.JSONObject;
 
 import java.util.Map;
@@ -102,7 +104,8 @@ class Retry {
   }
 
   private static RetryEventsOnceResult retryEventsOnce(
-      String userId, String deviceId, List<Event> events, HttpCall httpCall) {
+      String userId, String deviceId, List<Event> events, HttpCall httpCall)
+      throws AmplitudeInvalidAPIKeyException {
     Response onceReponse = httpCall.syncHttpCallWithEventsBuffer(events);
     boolean shouldRetry = true;
     boolean shouldReduceEventCount = false;
@@ -177,6 +180,12 @@ class Retry {
                     eventCount /= 2;
                   }
                 } catch (InterruptedException e) {
+                  Thread.currentThread().interrupt();
+                } catch (AmplitudeInvalidAPIKeyException e) {
+                  // The retry logic should only be executed after the API key checking passed.
+                  // This catch AmplitudeInvalidAPIKeyException is just for handling
+                  // retryEventsOnce in thread.
+                  Thread.currentThread().interrupt();
                 }
               }
               eventsInRetry.addAndGet(-eventCount);
