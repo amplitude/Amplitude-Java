@@ -1,13 +1,15 @@
 package com.amplitude;
 
-import com.amplitude.exception.AmplitudeInvalidAPIKeyException;
-
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.HashMap;
 import java.util.Queue;
-import java.util.concurrent.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.ConcurrentLinkedQueue;
+
+import com.amplitude.exception.AmplitudeInvalidAPIKeyException;
 
 public class Amplitude {
 

@@ -106,16 +106,16 @@ class Retry {
   private static RetryEventsOnceResult retryEventsOnce(
       String userId, String deviceId, List<Event> events, HttpCall httpCall)
       throws AmplitudeInvalidAPIKeyException {
-    Response onceReponse = httpCall.syncHttpCallWithEventsBuffer(events);
+    Response onceResponse = httpCall.syncHttpCallWithEventsBuffer(events);
     boolean shouldRetry = true;
     boolean shouldReduceEventCount = false;
     int[] eventIndicesToRemove = new int[] {};
-    if (onceReponse.status == Status.RATELIMIT) {
-      if (onceReponse.rateLimitBody != null) {
+    if (onceResponse.status == Status.RATELIMIT) {
+      if (onceResponse.rateLimitBody != null) {
         JSONObject exceededDailyQuotaUsers =
-            onceReponse.rateLimitBody.getJSONObject("exceededDailyQuotaUsers");
+            onceResponse.rateLimitBody.getJSONObject("exceededDailyQuotaUsers");
         JSONObject exceededDailyQuotaDevices =
-            onceReponse.rateLimitBody.getJSONObject("exceededDailyQuotaDevices");
+            onceResponse.rateLimitBody.getJSONObject("exceededDailyQuotaDevices");
         if ((userId.length() > 0 && exceededDailyQuotaUsers.has(userId))
             || (deviceId.length() > 0 && exceededDailyQuotaDevices.has(deviceId))) {
           shouldRetry = false;
@@ -123,15 +123,15 @@ class Retry {
       }
       // Reduce the payload to reduce risk of throttling
       shouldReduceEventCount = true;
-    } else if (onceReponse.status == Status.PAYLOAD_TOO_LARGE) {
+    } else if (onceResponse.status == Status.PAYLOAD_TOO_LARGE) {
       shouldRetry = true;
-    } else if (onceReponse.status == Status.INVALID) {
+    } else if (onceResponse.status == Status.INVALID) {
       if (events.size() == 1) {
         shouldRetry = false;
       } else {
-        eventIndicesToRemove = collectInvalidEventIndices(onceReponse);
+        eventIndicesToRemove = collectInvalidEventIndices(onceResponse);
       }
-    } else if (onceReponse.status == Status.SUCCESS) {
+    } else if (onceResponse.status == Status.SUCCESS) {
       shouldRetry = false;
     }
     return new RetryEventsOnceResult(shouldRetry, shouldReduceEventCount, eventIndicesToRemove);
