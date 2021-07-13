@@ -21,11 +21,11 @@ public class EventTest {
   @Test
   public void testToJsonObject() {
     Event event = new Event("test event", "test-user");
-    String longStr =
-        "This is a long string that is too long for an event, and going to be truncated later when we send the event.";
+    String longStr = "Long string to be truncated.";
     for (int i = 0; i < 7; i++) {
       longStr += longStr;
     }
+    assertEquals(3584, longStr.length());
     JSONObject eventProperties = new JSONObject();
     eventProperties.put("event_type", "test event type");
     JSONArray eventMsgArray = new JSONArray();

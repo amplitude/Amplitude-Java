@@ -12,9 +12,9 @@ public class MockURLStreamHandler extends URLStreamHandler implements URLStreamH
 
   private final Map<URL, URLConnection> connections = new HashMap<>();
 
-  private final static MockURLStreamHandler instance = new MockURLStreamHandler();
+  private static final MockURLStreamHandler instance = new MockURLStreamHandler();
 
-  public static MockURLStreamHandler getInstance(){
+  public static MockURLStreamHandler getInstance() {
     return instance;
   }
 

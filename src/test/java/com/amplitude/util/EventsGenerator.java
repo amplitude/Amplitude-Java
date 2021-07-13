@@ -12,23 +12,23 @@ public class EventsGenerator {
     return generateEvents(eventCount, 1, 1);
   }
 
-  public static List<Event> generateEvents(int eventCount, int userCount, int deviceCount) {
+  public static List<Event> generateEvents(int eventCount, int userIdCount, int deviceIdCount) {
     List<Event> events = new ArrayList<>();
     Random rand = new Random();
-    String[] users = new String[userCount];
-    String[] devices = new String[deviceCount];
-    for (int i = 0; i < userCount; i++) {
+    String[] users = new String[userIdCount];
+    String[] devices = new String[deviceIdCount];
+    for (int i = 0; i < userIdCount; i++) {
       users[i] = "test-user-id-" + i;
     }
-    for (int i = 0; i < deviceCount; i++) {
+    for (int i = 0; i < deviceIdCount; i++) {
       devices[i] = UUID.randomUUID().toString();
     }
     for (int i = 0; i < eventCount; i++) {
       events.add(
           new Event(
               "sample-type-" + i,
-              users[rand.nextInt(userCount)],
-              devices[rand.nextInt(deviceCount)]));
+              users[rand.nextInt(userIdCount)],
+              devices[rand.nextInt(deviceIdCount)]));
     }
     return events;
   }
