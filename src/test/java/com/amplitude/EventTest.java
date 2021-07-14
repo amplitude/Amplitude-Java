@@ -20,14 +20,19 @@ public class EventTest {
 
   @Test
   public void testToJsonObject() {
-    Event event = new Event("test event", "test-user");
-    String longStr = "Long string to be truncated.";
+    String eventType = "test event type";
+    String userId = "test-user";
+    Event event = new Event(eventType, userId);
+    String msg = "Long string to be truncated.";
+    StringBuilder stringBuilder = new StringBuilder();
+    stringBuilder.append(msg);
     for (int i = 0; i < 7; i++) {
-      longStr += longStr;
+      stringBuilder.append(stringBuilder.toString());
     }
+    String longStr = stringBuilder.toString();
     assertEquals(3584, longStr.length());
     JSONObject eventProperties = new JSONObject();
-    eventProperties.put("event_type", "test event type");
+    eventProperties.put("event_type", eventType);
     JSONArray eventMsgArray = new JSONArray();
     eventMsgArray.put(longStr);
     eventMsgArray.put(longStr);
@@ -41,5 +46,9 @@ public class EventTest {
       String truncatedMsg = (String) truncatedEventMsgArray.get(i);
       assertEquals(Constants.MAX_STRING_LENGTH, truncatedMsg.length());
     }
+    assertEquals(eventType, truncatedEvent.getString("event_type"));
+    assertEquals(userId, truncatedEvent.getString("user_id"));
+    assertEquals(
+        Constants.SDK_LIBRARY + "/" + Constants.SDK_VERSION, truncatedEvent.getString("library"));
   }
 }
