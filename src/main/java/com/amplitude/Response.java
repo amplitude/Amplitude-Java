@@ -59,9 +59,6 @@ public class Response {
       JSONObject exceededDailyQuotaUsers =
           Utils.getJSONObjectValueWithKey(json, "exceeded_daily_quota_users");
       res.rateLimitBody.put("exceededDailyQuotaUsers", exceededDailyQuotaUsers);
-    } else if (status == Status.SYSTEM_ERROR) {
-      res.error = json.getString("error");
-      res.code = 0;
     }
     return res;
   }

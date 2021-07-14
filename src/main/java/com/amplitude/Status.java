@@ -16,9 +16,7 @@ public enum Status {
   /** A server-side error ocurred during submission. */
   FAILED,
   /** a server or client side error occuring when a request takes too long and is cancelled */
-  TIMEOUT,
-  /** environment error.. E.g. disconnected from network */
-  SYSTEM_ERROR;
+  TIMEOUT;
 
   protected static Status getCodeStatus(int code) {
     if (code >= 200 && code < 300) {
