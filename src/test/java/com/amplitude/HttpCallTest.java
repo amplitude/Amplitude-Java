@@ -224,8 +224,8 @@ public class HttpCallTest {
     HttpCall httpCall = getHttpCallFromCallMode(httpCallMode);
     List<Event> events = EventsGenerator.generateEvents(1);
     Response response = httpCall.syncHttpCallWithEventsBuffer(events);
-    assertEquals(0, response.code);
-    assertEquals(Status.UNKNOWN, response.status);
+    assertEquals(408, response.code);
+    assertEquals(Status.TIMEOUT, response.status);
     verifyConnectionOption(connection);
   }
 
