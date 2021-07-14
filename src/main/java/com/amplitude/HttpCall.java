@@ -87,7 +87,7 @@ public abstract class HttpCall {
       // Also SocketTimeoutException, when the HTTP request times out.
       JSONObject timesOutResponse = new JSONObject();
       timesOutResponse.put("status", Status.TIMEOUT);
-      timesOutResponse.put("code", 0);
+      timesOutResponse.put("code", 408);
       responseBody = Response.populateResponse(timesOutResponse);
     } finally {
       if (inputStream != null) {
