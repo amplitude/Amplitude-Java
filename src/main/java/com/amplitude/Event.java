@@ -115,7 +115,7 @@ public class Event {
    * The price of the item purchased. Required for revenue data if the revenue field is not sent.
    * You can use negative values to indicate refunds.
    */
-  public double price;
+  public Double price;
 
   /** The quantity of the item purchased. Defaults to 1 if not specified. */
   public int quantity;
@@ -125,7 +125,7 @@ public class Event {
    * (price * quantity) will be used as the revenue value. You can use negative values to indicate
    * refunds.
    */
-  public double revenue;
+  public Double revenue;
 
   /**
    * An identifier for the item purchased. You must send a price and quantity or revenue with this
@@ -240,11 +240,18 @@ public class Event {
       event.put(
           "user_properties",
           (userProperties == null) ? new JSONObject() : truncate(userProperties));
-      event.put("price", price);
-      event.put("quantity", quantity);
-      event.put("revenue", revenue);
-      event.put("productId", productId);
-      event.put("revenueType", revenueType);
+
+      boolean shouldLogRevenueProps = (revenue != null || (price != null && quantity > 0));
+      if (shouldLogRevenueProps) {
+        event.put("price", price);
+        event.put("quantity", quantity);
+        event.put(
+            "revenue",
+            (revenue != null && price != null && quantity > 0) ? quantity * price : revenue);
+        event.put("productId", productId);
+        event.put("revenueType", revenueType);
+      }
+
       event.put("event_id", replaceWithJSONNull(eventId));
       event.put("session_id", sessionId); // session_id = -1 if outOfSession = true;
       event.put("insert_id", insertId);
