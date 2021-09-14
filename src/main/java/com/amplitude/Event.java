@@ -241,13 +241,12 @@ public class Event {
           "user_properties",
           (userProperties == null) ? new JSONObject() : truncate(userProperties));
 
-      boolean shouldLogRevenueProps = (revenue != null || (price != null && quantity > 0));
+      boolean shouldLogRevenueProps = (revenue != null || price != null);
       if (shouldLogRevenueProps) {
+        int eventQuantity = quantity > 0 ? quantity : 1;
         event.put("price", price);
-        event.put("quantity", quantity);
-        event.put(
-            "revenue",
-            (revenue != null && price != null && quantity > 0) ? quantity * price : revenue);
+        event.put("quantity", eventQuantity);
+        event.put("revenue", revenue);
         event.put("productId", productId);
         event.put("revenueType", revenueType);
       }
