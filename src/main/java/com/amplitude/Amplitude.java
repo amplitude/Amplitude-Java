@@ -17,6 +17,7 @@ public class Amplitude {
 
   private static Map<String, Amplitude> instances = new HashMap<>();
   private String apiKey;
+  private String serverUrl = Constants.API_URL;
 
   private AmplitudeLog logger;
 
@@ -67,7 +68,20 @@ public class Amplitude {
    */
   public void init(String key) {
     apiKey = key;
-    updateHttpCall(HttpCallMode.REGULAR_HTTPCALL);
+    updateHttpCall(HttpCallMode.REGULAR_HTTPCALL, serverUrl);
+  }
+
+  /**
+   * Sends events to a different URL other than Constants.API_URL or Constants.BATCH_API_URL. Used
+   * for proxy server.
+   *
+   * @param url the server URL for sending event
+   */
+  public void setServerUrl(String url) {
+    boolean isValidServerUrl = url.startsWith("http://") || url.startsWith("https://");
+    if (!isValidServerUrl) return;
+    serverUrl = url;
+    updateHttpCall(httpCallMode, serverUrl);
   }
 
   /**
@@ -77,17 +91,18 @@ public class Amplitude {
    * @param isBatchMode if using batch upload or not;
    */
   public void useBatchMode(Boolean isBatchMode) {
-    updateHttpCall(isBatchMode ? HttpCallMode.BATCH_HTTPCALL : HttpCallMode.REGULAR_HTTPCALL);
+    updateHttpCall(
+        isBatchMode ? HttpCallMode.BATCH_HTTPCALL : HttpCallMode.REGULAR_HTTPCALL,
+        isBatchMode ? Constants.BATCH_API_URL : Constants.API_URL);
   }
 
-  private void updateHttpCall(HttpCallMode updatedHttpCallMode) {
-    if (httpCallMode == null || httpCallMode != updatedHttpCallMode) {
-      httpCallMode = updatedHttpCallMode;
-      httpCall =
-          (updatedHttpCallMode == HttpCallMode.BATCH_HTTPCALL)
-              ? new BatchHttpCall(apiKey)
-              : new GeneralHttpCall(apiKey);
-    }
+  private void updateHttpCall(HttpCallMode updatedHttpCallMode, String updatedServerUrl) {
+    httpCallMode = updatedHttpCallMode;
+    serverUrl = updatedServerUrl;
+    httpCall =
+        (updatedHttpCallMode == HttpCallMode.BATCH_HTTPCALL)
+            ? new BatchHttpCall(apiKey, serverUrl)
+            : new GeneralHttpCall(apiKey, serverUrl);
   }
 
   /**

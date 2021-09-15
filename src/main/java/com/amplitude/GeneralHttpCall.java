@@ -1,10 +1,11 @@
 package com.amplitude;
 
 public class GeneralHttpCall extends HttpCall {
-  private static String apiUrl = Constants.API_URL;
+  private static String apiUrl;
 
-  protected GeneralHttpCall(String apiKey) {
+  protected GeneralHttpCall(String apiKey, String generalServerUrl) {
     super(apiKey);
+    apiUrl = generalServerUrl;
   }
 
   @Override
