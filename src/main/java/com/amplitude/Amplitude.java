@@ -99,8 +99,7 @@ public class Amplitude {
     if (updatedHttpCallMode == HttpCallMode.BATCH_HTTPCALL) {
       httpCall = new BatchHttpCall(apiKey, serverUrl != null ? serverUrl : Constants.BATCH_API_URL);
     } else {
-      httpCall =
-          new GeneralHttpCall(apiKey, serverUrl != null ? serverUrl : Constants.BATCH_API_URL);
+      httpCall = new GeneralHttpCall(apiKey, serverUrl != null ? serverUrl : Constants.API_URL);
     }
   }
 

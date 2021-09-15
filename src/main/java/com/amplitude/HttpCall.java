@@ -29,22 +29,21 @@ public abstract class HttpCall {
    * @return The response object which contains a code and other information
    */
   private String apiKey;
+  private String serverUrl;
 
-  protected HttpCall(String apiKey) {
+  protected HttpCall(String apiKey, String serverUrl) {
     this.apiKey = apiKey;
+    this.serverUrl = serverUrl;
   }
-
-  protected abstract String getApiUrl();
 
   protected Response syncHttpCallWithEventsBuffer(List<Event> events)
       throws AmplitudeInvalidAPIKeyException {
-    String apiUrl = getApiUrl();
     HttpsURLConnection connection;
     InputStream inputStream = null;
     int responseCode = 500;
     Response responseBody = new Response();
     try {
-      connection = (HttpsURLConnection) new URL(apiUrl).openConnection();
+      connection = (HttpsURLConnection) new URL(this.serverUrl).openConnection();
       connection.setRequestMethod("POST");
       connection.setRequestProperty("Content-Type", "application/json");
       connection.setRequestProperty("Accept", "application/json");
