@@ -17,7 +17,7 @@ public class Amplitude {
 
   private static Map<String, Amplitude> instances = new HashMap<>();
   private String apiKey;
-  private String serverUrl = Constants.API_URL;
+  private String serverUrl;
 
   private AmplitudeLog logger;
 
@@ -68,7 +68,7 @@ public class Amplitude {
    */
   public void init(String key) {
     apiKey = key;
-    updateHttpCall(HttpCallMode.REGULAR_HTTPCALL, serverUrl);
+    updateHttpCall(HttpCallMode.REGULAR_HTTPCALL);
   }
 
   /**
@@ -81,7 +81,7 @@ public class Amplitude {
     boolean isValidServerUrl = url.startsWith("http://") || url.startsWith("https://");
     if (!isValidServerUrl) return;
     serverUrl = url;
-    updateHttpCall(httpCallMode, serverUrl);
+    updateHttpCall(httpCallMode);
   }
 
   /**
@@ -91,18 +91,17 @@ public class Amplitude {
    * @param isBatchMode if using batch upload or not;
    */
   public void useBatchMode(Boolean isBatchMode) {
-    updateHttpCall(
-        isBatchMode ? HttpCallMode.BATCH_HTTPCALL : HttpCallMode.REGULAR_HTTPCALL,
-        isBatchMode ? Constants.BATCH_API_URL : Constants.API_URL);
+    updateHttpCall(isBatchMode ? HttpCallMode.BATCH_HTTPCALL : HttpCallMode.REGULAR_HTTPCALL);
   }
 
-  private void updateHttpCall(HttpCallMode updatedHttpCallMode, String updatedServerUrl) {
+  private void updateHttpCall(HttpCallMode updatedHttpCallMode) {
     httpCallMode = updatedHttpCallMode;
-    serverUrl = updatedServerUrl;
-    httpCall =
-        (updatedHttpCallMode == HttpCallMode.BATCH_HTTPCALL)
-            ? new BatchHttpCall(apiKey, serverUrl)
-            : new GeneralHttpCall(apiKey, serverUrl);
+    if (updatedHttpCallMode == HttpCallMode.BATCH_HTTPCALL) {
+      httpCall = new BatchHttpCall(apiKey, serverUrl != null ? serverUrl : Constants.BATCH_API_URL);
+    } else {
+      httpCall =
+          new GeneralHttpCall(apiKey, serverUrl != null ? serverUrl : Constants.BATCH_API_URL);
+    }
   }
 
   /**
