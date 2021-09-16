@@ -135,7 +135,6 @@ public class AmplitudeTest {
     Field httpCallField = amplitude.getClass().getDeclaredField("httpCall");
     httpCallField.setAccessible(true);
     HttpCall httpCall = (HttpCall) httpCallField.get(amplitude);
-    System.out.println(httpCall.getApiUrl());
     assertEquals(httpCall.getApiUrl(), useBatch ? Constants.BATCH_API_URL : Constants.API_URL);
   }
 
