@@ -3,6 +3,8 @@ package com.amplitude;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.mock;
@@ -120,6 +122,34 @@ public class AmplitudeTest {
     }
     assertTrue(latch.await(1L, TimeUnit.SECONDS));
     verify(httpCall, atLeast(1)).syncHttpCallWithEventsBuffer(anyList());
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  public void testDefaultServerUrl(boolean useBatch)
+      throws NoSuchFieldException, IllegalAccessException {
+    Amplitude amplitude = Amplitude.getInstance("test");
+    amplitude.init(apiKey);
+    amplitude.useBatchMode(useBatch);
+
+    Field httpCallField = amplitude.getClass().getDeclaredField("httpCall");
+    httpCallField.setAccessible(true);
+    HttpCall httpCall = (HttpCall) httpCallField.get(amplitude);
+    System.out.println(httpCall.getApiUrl());
+    assertEquals(httpCall.getApiUrl(), useBatch ? Constants.BATCH_API_URL : Constants.API_URL);
+  }
+
+  @Test
+  public void testSetServerUrl() throws NoSuchFieldException, IllegalAccessException {
+    String testServerUrl = "https://api.eu.amplitude.com/2/httpapi";
+    Amplitude amplitude = Amplitude.getInstance("testServerUrl");
+    amplitude.init(apiKey);
+    amplitude.setServerUrl(testServerUrl);
+
+    Field httpCallField = amplitude.getClass().getDeclaredField("httpCall");
+    httpCallField.setAccessible(true);
+    HttpCall httpCall = (HttpCall) httpCallField.get(amplitude);
+    assertEquals(httpCall.getApiUrl(), testServerUrl);
   }
 
   private HttpCall getMockHttpCall(Amplitude amplitude, boolean useBatch)

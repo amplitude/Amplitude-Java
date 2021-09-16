@@ -36,14 +36,19 @@ public abstract class HttpCall {
     this.serverUrl = serverUrl;
   }
 
+  protected String getApiUrl() {
+    return this.serverUrl;
+  }
+
   protected Response syncHttpCallWithEventsBuffer(List<Event> events)
       throws AmplitudeInvalidAPIKeyException {
+    String apiUrl = getApiUrl();
     HttpsURLConnection connection;
     InputStream inputStream = null;
     int responseCode = 500;
     Response responseBody = new Response();
     try {
-      connection = (HttpsURLConnection) new URL(this.serverUrl).openConnection();
+      connection = (HttpsURLConnection) new URL(apiUrl).openConnection();
       connection.setRequestMethod("POST");
       connection.setRequestProperty("Content-Type", "application/json");
       connection.setRequestProperty("Accept", "application/json");
