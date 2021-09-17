@@ -139,16 +139,34 @@ public class AmplitudeTest {
   }
 
   @Test
-  public void testSetServerUrl() throws NoSuchFieldException, IllegalAccessException {
-    String testServerUrl = "https://api.eu.amplitude.com/2/httpapi";
+  public void testEUBatchApiUrlTranslatedToBatchHttpCallClass()
+      throws NoSuchFieldException, IllegalAccessException {
+    String euBatchApiUrl = "https://api.eu.amplitude.com/batch";
     Amplitude amplitude = Amplitude.getInstance("testServerUrl");
     amplitude.init(apiKey);
-    amplitude.setServerUrl(testServerUrl);
+    amplitude.useBatchMode(true);
+    amplitude.setServerUrl(euBatchApiUrl);
 
     Field httpCallField = amplitude.getClass().getDeclaredField("httpCall");
     httpCallField.setAccessible(true);
     HttpCall httpCall = (HttpCall) httpCallField.get(amplitude);
-    assertEquals(httpCall.getApiUrl(), testServerUrl);
+    assertEquals(httpCall.getApiUrl(), euBatchApiUrl);
+    assertEquals(httpCall.getClass(), BatchHttpCall.class);
+  }
+
+  @Test
+  public void testEUApiUrlTranslatedToGeneralHttpCallClass()
+      throws NoSuchFieldException, IllegalAccessException {
+    String euApiUrl = "https://api.eu.amplitude.com/2/httpapi";
+    Amplitude amplitude = Amplitude.getInstance("testServerUrl");
+    amplitude.init(apiKey);
+    amplitude.setServerUrl(euApiUrl);
+
+    Field httpCallField = amplitude.getClass().getDeclaredField("httpCall");
+    httpCallField.setAccessible(true);
+    HttpCall httpCall = (HttpCall) httpCallField.get(amplitude);
+    assertEquals(httpCall.getApiUrl(), euApiUrl);
+    assertEquals(httpCall.getClass(), GeneralHttpCall.class);
   }
 
   private HttpCall getMockHttpCall(Amplitude amplitude, boolean useBatch)
