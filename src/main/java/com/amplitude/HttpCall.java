@@ -29,12 +29,16 @@ public abstract class HttpCall {
    * @return The response object which contains a code and other information
    */
   private String apiKey;
+  private String serverUrl;
 
-  protected HttpCall(String apiKey) {
+  protected HttpCall(String apiKey, String serverUrl) {
     this.apiKey = apiKey;
+    this.serverUrl = serverUrl;
   }
 
-  protected abstract String getApiUrl();
+  protected String getApiUrl() {
+    return this.serverUrl;
+  }
 
   protected Response syncHttpCallWithEventsBuffer(List<Event> events)
       throws AmplitudeInvalidAPIKeyException {

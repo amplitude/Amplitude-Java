@@ -17,6 +17,7 @@ public class Amplitude {
 
   private static Map<String, Amplitude> instances = new HashMap<>();
   private String apiKey;
+  private String serverUrl;
 
   private AmplitudeLog logger;
 
@@ -71,6 +72,19 @@ public class Amplitude {
   }
 
   /**
+   * Sends events to a different URL other than Constants.API_URL or Constants.BATCH_API_URL. Used
+   * for proxy server.
+   *
+   * @param url the server URL for sending event
+   */
+  public void setServerUrl(String url) {
+    boolean isValidServerUrl = url.startsWith("http://") || url.startsWith("https://");
+    if (!isValidServerUrl) return;
+    serverUrl = url;
+    updateHttpCall(httpCallMode);
+  }
+
+  /**
    * Set the Event Upload Mode. If isBatchMode is true, the events will log through the Amplitude
    * HTTP V2 Batch API.
    *
@@ -81,12 +95,11 @@ public class Amplitude {
   }
 
   private void updateHttpCall(HttpCallMode updatedHttpCallMode) {
-    if (httpCallMode == null || httpCallMode != updatedHttpCallMode) {
-      httpCallMode = updatedHttpCallMode;
-      httpCall =
-          (updatedHttpCallMode == HttpCallMode.BATCH_HTTPCALL)
-              ? new BatchHttpCall(apiKey)
-              : new GeneralHttpCall(apiKey);
+    httpCallMode = updatedHttpCallMode;
+    if (updatedHttpCallMode == HttpCallMode.BATCH_HTTPCALL) {
+      httpCall = new BatchHttpCall(apiKey, serverUrl != null ? serverUrl : Constants.BATCH_API_URL);
+    } else {
+      httpCall = new GeneralHttpCall(apiKey, serverUrl != null ? serverUrl : Constants.API_URL);
     }
   }
 
