@@ -51,6 +51,7 @@ public class EventTest {
     assertEquals(userId, truncatedEvent.getString("user_id"));
     assertEquals(
         Constants.SDK_LIBRARY + "/" + Constants.SDK_VERSION, truncatedEvent.getString("library"));
+    assertEquals(-1, truncatedEvent.getLong("session_id"));
   }
 
   @Test

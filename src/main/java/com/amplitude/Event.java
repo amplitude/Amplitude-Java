@@ -151,7 +151,7 @@ public class Event {
    * want to associate events with a particular system. A session_id of -1 is the same as no
    * session_id specified.
    */
-  public long sessionId;
+  public long sessionId = -1;
 
   /**
    * A unique identifier for the event. We will deduplicate subsequent events sent with an insert_id
