@@ -1,25 +1,11 @@
 package com.amplitude;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.params.provider.Arguments.arguments;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-import java.io.IOException;
-import java.net.ProtocolException;
-import java.net.URL;
-import java.util.Arrays;
-import java.util.List;
-import java.util.stream.Stream;
-
+import com.amplitude.exception.AmplitudeInvalidAPIKeyException;
+import com.amplitude.util.EventsGenerator;
+import com.amplitude.util.MockHttpsURLConnectionHelper;
+import com.amplitude.util.MockURLStreamHandler;
 import org.json.JSONArray;
 import org.json.JSONObject;
-import javax.net.ssl.HttpsURLConnection;
-
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -27,10 +13,17 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import com.amplitude.exception.AmplitudeInvalidAPIKeyException;
-import com.amplitude.util.EventsGenerator;
-import com.amplitude.util.MockHttpsURLConnectionHelper;
-import com.amplitude.util.MockURLStreamHandler;
+import javax.net.ssl.HttpsURLConnection;
+import java.io.IOException;
+import java.net.ProtocolException;
+import java.net.URL;
+import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Stream;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.params.provider.Arguments.arguments;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 public class HttpCallTest {
@@ -234,10 +227,7 @@ public class HttpCallTest {
   }
 
   private HttpCall getHttpCallFromCallMode(HttpCallMode httpCallMode) {
-    if (httpCallMode == HttpCallMode.BATCH) {
-      return new HttpCall(apiKey, Constants.BATCH_API_URL);
-    }
-    return new HttpCall(apiKey, Constants.API_URL);
+    return new HttpCall(apiKey, httpCallMode == HttpCallMode.BATCH ? Constants.BATCH_API_URL : Constants.API_URL);
   }
 
   private void verifyConnectionOption(HttpsURLConnection connection) throws ProtocolException {
