@@ -31,6 +31,9 @@ hs_err_pid*
 *.iml
 *.ipr
 *.iws
+.project
+.classpath
+.settings
 
 # Build Files
 **/build
