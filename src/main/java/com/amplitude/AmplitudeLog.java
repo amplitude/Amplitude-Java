@@ -1,7 +1,6 @@
 package com.amplitude;
 
 public class AmplitudeLog {
-
   private LogMode logMode = LogMode.ERROR;
 
   public void setLogMode(LogMode logMode) {

@@ -1,8 +1,7 @@
 package com.amplitude.exception;
 
 public class AmplitudeInvalidAPIKeyException extends AmplitudeException {
-
-    public AmplitudeInvalidAPIKeyException(String message) {
-        super(message);
+    public AmplitudeInvalidAPIKeyException() {
+        super("Invalid API key");
     }
 }

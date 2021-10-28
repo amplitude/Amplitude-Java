@@ -1,30 +1,21 @@
 package com.amplitude;
 
-import static org.junit.jupiter.api.Assertions.assertNotSame;
-import static org.junit.jupiter.api.Assertions.assertSame;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-
-import static org.mockito.ArgumentMatchers.anyList;
-import static org.mockito.Mockito.atLeast;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-
-import java.lang.reflect.Field;
-import java.util.List;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
-
+import com.amplitude.exception.AmplitudeInvalidAPIKeyException;
+import com.amplitude.util.EventsGenerator;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import com.amplitude.exception.AmplitudeInvalidAPIKeyException;
-import com.amplitude.util.EventsGenerator;
+import java.lang.reflect.Field;
+import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 public class AmplitudeTest {
@@ -58,7 +49,7 @@ public class AmplitudeTest {
     response.code = 200;
     response.status = Status.SUCCESS;
     CountDownLatch latch = new CountDownLatch(1);
-    when(httpCall.syncHttpCallWithEventsBuffer(anyList()))
+    when(httpCall.makeRequest(anyList()))
         .thenAnswer(
             invocation -> {
               latch.countDown();
@@ -68,7 +59,7 @@ public class AmplitudeTest {
       amplitude.logEvent(event);
     }
     assertTrue(latch.await(1L, TimeUnit.SECONDS));
-    verify(httpCall, times(1)).syncHttpCallWithEventsBuffer(anyList());
+    verify(httpCall, times(1)).makeRequest(anyList());
   }
 
   @ParameterizedTest
@@ -83,17 +74,17 @@ public class AmplitudeTest {
     List<Event> events = EventsGenerator.generateEvents(10, 5, 6);
     HttpCall httpCall = getMockHttpCall(amplitude, useBatch);
     CountDownLatch latch = new CountDownLatch(1);
-    when(httpCall.syncHttpCallWithEventsBuffer(anyList()))
+    when(httpCall.makeRequest(anyList()))
         .thenAnswer(
             invocation -> {
               latch.countDown();
-              throw new AmplitudeInvalidAPIKeyException("test");
+              throw new AmplitudeInvalidAPIKeyException();
             });
     for (Event event : events) {
       amplitude.logEvent(event);
     }
     assertTrue(latch.await(1L, TimeUnit.SECONDS));
-    verify(httpCall, times(1)).syncHttpCallWithEventsBuffer(anyList());
+    verify(httpCall, times(1)).makeRequest(anyList());
   }
 
   @ParameterizedTest
@@ -111,7 +102,7 @@ public class AmplitudeTest {
     response.code = 400;
     response.status = Status.INVALID;
     CountDownLatch latch = new CountDownLatch(1);
-    when(httpCall.syncHttpCallWithEventsBuffer(anyList()))
+    when(httpCall.makeRequest(anyList()))
         .thenAnswer(
             invocation -> {
               latch.countDown();
@@ -121,7 +112,7 @@ public class AmplitudeTest {
       amplitude.logEvent(event);
     }
     assertTrue(latch.await(1L, TimeUnit.SECONDS));
-    verify(httpCall, atLeast(1)).syncHttpCallWithEventsBuffer(anyList());
+    verify(httpCall, atLeast(1)).makeRequest(anyList());
   }
 
   @ParameterizedTest
@@ -139,7 +130,7 @@ public class AmplitudeTest {
   }
 
   @Test
-  public void testEUBatchApiUrlTranslatedToBatchHttpCallClass()
+  public void testEUBatchApiUrlPassedIntoHttpCallInstance()
       throws NoSuchFieldException, IllegalAccessException {
     String euBatchApiUrl = "https://api.eu.amplitude.com/batch";
     Amplitude amplitude = Amplitude.getInstance("testServerUrl");
@@ -151,11 +142,10 @@ public class AmplitudeTest {
     httpCallField.setAccessible(true);
     HttpCall httpCall = (HttpCall) httpCallField.get(amplitude);
     assertEquals(httpCall.getApiUrl(), euBatchApiUrl);
-    assertEquals(httpCall.getClass(), BatchHttpCall.class);
   }
 
   @Test
-  public void testEUApiUrlTranslatedToGeneralHttpCallClass()
+  public void testEUApiUrlPassedIntoHttpCallInstance()
       throws NoSuchFieldException, IllegalAccessException {
     String euApiUrl = "https://api.eu.amplitude.com/2/httpapi";
     Amplitude amplitude = Amplitude.getInstance("testServerUrl");
@@ -166,17 +156,11 @@ public class AmplitudeTest {
     httpCallField.setAccessible(true);
     HttpCall httpCall = (HttpCall) httpCallField.get(amplitude);
     assertEquals(httpCall.getApiUrl(), euApiUrl);
-    assertEquals(httpCall.getClass(), GeneralHttpCall.class);
   }
 
   private HttpCall getMockHttpCall(Amplitude amplitude, boolean useBatch)
       throws NoSuchFieldException, IllegalAccessException {
-    HttpCall httpCall;
-    if (useBatch) {
-      httpCall = mock(BatchHttpCall.class);
-    } else {
-      httpCall = mock(GeneralHttpCall.class);
-    }
+    HttpCall httpCall = mock(HttpCall.class);
     Field httpCallField = amplitude.getClass().getDeclaredField("httpCall");
     httpCallField.setAccessible(true);
     httpCallField.set(amplitude, httpCall);

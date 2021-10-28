@@ -1,14 +1,13 @@
 package com.amplitude;
 
-import java.util.Iterator;
-import java.util.UUID;
-
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-public class Event {
+import java.util.Iterator;
+import java.util.UUID;
 
+public class Event {
   /** A unique identifier for your event. */
   public String eventType;
 

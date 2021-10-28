@@ -12,10 +12,8 @@ import static org.mockito.Mockito.when;
 import java.io.IOException;
 import java.net.ProtocolException;
 import java.net.URL;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.UUID;
 import java.util.stream.Stream;
 
 import org.json.JSONArray;
@@ -69,7 +67,7 @@ public class HttpCallTest {
 
     HttpCall httpCall = getHttpCallFromCallMode(httpCallMode);
     List<Event> events = EventsGenerator.generateEvents(1);
-    Response response = httpCall.syncHttpCallWithEventsBuffer(events);
+    Response response = httpCall.makeRequest(events);
     assertEquals(200, response.code);
     assertEquals(Status.SUCCESS, response.status);
     assertNull(response.rateLimitBody);
@@ -97,7 +95,7 @@ public class HttpCallTest {
 
     HttpCall httpCall = getHttpCallFromCallMode(httpCallMode);
     List<Event> events = EventsGenerator.generateEvents(1);
-    Response response = httpCall.syncHttpCallWithEventsBuffer(events);
+    Response response = httpCall.makeRequest(events);
     assertEquals(413, response.code);
     assertEquals(Status.PAYLOAD_TOO_LARGE, response.status);
     assertNull(response.rateLimitBody);
@@ -129,7 +127,7 @@ public class HttpCallTest {
 
     HttpCall httpCall = getHttpCallFromCallMode(httpCallMode);
     List<Event> events = EventsGenerator.generateEvents(1);
-    Response response = httpCall.syncHttpCallWithEventsBuffer(events);
+    Response response = httpCall.makeRequest(events);
     assertEquals(400, response.code);
     assertEquals(Status.INVALID, response.status);
     assertNull(response.rateLimitBody);
@@ -163,7 +161,7 @@ public class HttpCallTest {
     assertThrows(
         AmplitudeInvalidAPIKeyException.class,
         () -> {
-          httpCall.syncHttpCallWithEventsBuffer(events);
+          httpCall.makeRequest(events);
         },
         errorMsg);
     verifyConnectionOption(connection);
@@ -194,7 +192,7 @@ public class HttpCallTest {
 
     HttpCall httpCall = getHttpCallFromCallMode(httpCallMode);
     List<Event> events = EventsGenerator.generateEvents(1);
-    Response response = httpCall.syncHttpCallWithEventsBuffer(events);
+    Response response = httpCall.makeRequest(events);
     assertEquals(429, response.code);
     assertEquals(Status.RATELIMIT, response.status);
     assertNotNull(response.rateLimitBody);
@@ -223,7 +221,7 @@ public class HttpCallTest {
     mockURLStreamHandler.setConnection(url, connection);
     HttpCall httpCall = getHttpCallFromCallMode(httpCallMode);
     List<Event> events = EventsGenerator.generateEvents(1);
-    Response response = httpCall.syncHttpCallWithEventsBuffer(events);
+    Response response = httpCall.makeRequest(events);
     assertEquals(408, response.code);
     assertEquals(Status.TIMEOUT, response.status);
     verifyConnectionOption(connection);
@@ -231,15 +229,15 @@ public class HttpCallTest {
 
   static Stream<Arguments> httpCallArguments() {
     return Stream.of(
-        arguments(HttpCallMode.REGULAR_HTTPCALL, Constants.API_URL),
-        arguments(HttpCallMode.BATCH_HTTPCALL, Constants.BATCH_API_URL));
+        arguments(HttpCallMode.REGULAR, Constants.API_URL),
+        arguments(HttpCallMode.BATCH, Constants.BATCH_API_URL));
   }
 
   private HttpCall getHttpCallFromCallMode(HttpCallMode httpCallMode) {
-    if (httpCallMode == HttpCallMode.BATCH_HTTPCALL) {
-      return new BatchHttpCall(apiKey, Constants.BATCH_API_URL);
+    if (httpCallMode == HttpCallMode.BATCH) {
+      return new HttpCall(apiKey, Constants.BATCH_API_URL);
     }
-    return new GeneralHttpCall(apiKey, Constants.API_URL);
+    return new HttpCall(apiKey, Constants.API_URL);
   }
 
   private void verifyConnectionOption(HttpsURLConnection connection) throws ProtocolException {
