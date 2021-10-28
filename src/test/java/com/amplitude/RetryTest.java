@@ -55,7 +55,7 @@ public class RetryTest {
 
     HttpCall httpCall = mock(HttpCall.class);
     CountDownLatch latch = new CountDownLatch(4);
-    when(httpCall.syncHttpCallWithEventsBuffer(anyList()))
+    when(httpCall.makeRequest(anyList()))
         .thenAnswer(
             invocation -> {
               latch.countDown();
@@ -80,6 +80,6 @@ public class RetryTest {
     List<Event> events = EventsGenerator.generateEvents(10);
     Retry.sendEventsWithRetry(events, invalidResponse, httpCall);
     assertTrue(latch.await(1L, TimeUnit.SECONDS));
-    verify(httpCall, times(4)).syncHttpCallWithEventsBuffer(anyList());
+    verify(httpCall, times(4)).makeRequest(anyList());
   }
 }

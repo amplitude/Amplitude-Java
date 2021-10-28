@@ -1,18 +1,9 @@
 package com.amplitude;
 
 import com.amplitude.exception.AmplitudeInvalidAPIKeyException;
-
 import org.json.JSONObject;
 
-import java.util.Map;
-import java.util.Arrays;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
@@ -46,7 +37,7 @@ class Retry {
     List<Event> prunedEvents = new ArrayList<>();
     // If we already have the key value pair for the current event in idToBuffer,
     // We just add into the events list and deal with it later otherwise we should add it to
-    // prunedEvents and return back
+    // prunedEvents and return.
     for (Event event : events) {
       String userId = event.userId;
       String deviceId = event.deviceId;
@@ -75,7 +66,7 @@ class Retry {
   }
 
   private static List<Integer> collectIndicesWithRequestBody(JSONObject requestBody, String key) {
-    List<Integer> invalidIndices = new ArrayList<Integer>();
+    List<Integer> invalidIndices = new ArrayList<>();
     JSONObject fields = requestBody.getJSONObject(key);
     Iterator<String> fieldKeys = fields.keys();
     while (fieldKeys.hasNext()) {
@@ -97,8 +88,7 @@ class Retry {
           collectIndicesWithRequestBody(response.invalidRequestBody, "eventsWithMissingFields");
       invalidFieldsIndices.addAll(missingFieldsIndices);
       Collections.sort(invalidFieldsIndices);
-      int[] allInvalidEventIndices = invalidFieldsIndices.stream().mapToInt(i -> i).toArray();
-      return allInvalidEventIndices;
+      return invalidFieldsIndices.stream().mapToInt(i -> i).toArray();
     }
     return new int[] {};
   }
@@ -106,7 +96,7 @@ class Retry {
   private static RetryEventsOnceResult retryEventsOnce(
       String userId, String deviceId, List<Event> events, HttpCall httpCall)
       throws AmplitudeInvalidAPIKeyException {
-    Response onceResponse = httpCall.syncHttpCallWithEventsBuffer(events);
+    Response onceResponse = httpCall.makeRequest(events);
     boolean shouldRetry = true;
     boolean shouldReduceEventCount = false;
     int[] eventIndicesToRemove = new int[] {};
@@ -179,9 +169,7 @@ class Retry {
                   if (shouldReduceEventCount && !isLastTry) {
                     eventCount /= 2;
                   }
-                } catch (InterruptedException e) {
-                  Thread.currentThread().interrupt();
-                } catch (AmplitudeInvalidAPIKeyException e) {
+                } catch (InterruptedException | AmplitudeInvalidAPIKeyException e) {
                   // The retry logic should only be executed after the API key checking passed.
                   // This catch AmplitudeInvalidAPIKeyException is just for handling
                   // retryEventsOnce in thread.
@@ -243,12 +231,12 @@ class Retry {
         }
         List<Event> retryBuffer = deviceToBufferMap.get(deviceId);
         if (retryBuffer == null) {
-          retryBuffer = new ArrayList<Event>();
+          retryBuffer = new ArrayList<>();
           deviceToBufferMap.put(deviceId, retryBuffer);
         }
         eventsInRetry.incrementAndGet();
         retryBuffer.add(event);
-        userToDevices.computeIfAbsent(userId, key -> new HashSet<String>()).add(deviceId);
+        userToDevices.computeIfAbsent(userId, key -> new HashSet<>()).add(deviceId);
       }
     }
     userToDevices.forEach(

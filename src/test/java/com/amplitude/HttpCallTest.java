@@ -1,27 +1,11 @@
 package com.amplitude;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.params.provider.Arguments.arguments;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-import java.io.IOException;
-import java.net.ProtocolException;
-import java.net.URL;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.UUID;
-import java.util.stream.Stream;
-
+import com.amplitude.exception.AmplitudeInvalidAPIKeyException;
+import com.amplitude.util.EventsGenerator;
+import com.amplitude.util.MockHttpsURLConnectionHelper;
+import com.amplitude.util.MockURLStreamHandler;
 import org.json.JSONArray;
 import org.json.JSONObject;
-import javax.net.ssl.HttpsURLConnection;
-
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -29,10 +13,17 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import com.amplitude.exception.AmplitudeInvalidAPIKeyException;
-import com.amplitude.util.EventsGenerator;
-import com.amplitude.util.MockHttpsURLConnectionHelper;
-import com.amplitude.util.MockURLStreamHandler;
+import javax.net.ssl.HttpsURLConnection;
+import java.io.IOException;
+import java.net.ProtocolException;
+import java.net.URL;
+import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Stream;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.params.provider.Arguments.arguments;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 public class HttpCallTest {
@@ -69,7 +60,7 @@ public class HttpCallTest {
 
     HttpCall httpCall = getHttpCallFromCallMode(httpCallMode);
     List<Event> events = EventsGenerator.generateEvents(1);
-    Response response = httpCall.syncHttpCallWithEventsBuffer(events);
+    Response response = httpCall.makeRequest(events);
     assertEquals(200, response.code);
     assertEquals(Status.SUCCESS, response.status);
     assertNull(response.rateLimitBody);
@@ -97,7 +88,7 @@ public class HttpCallTest {
 
     HttpCall httpCall = getHttpCallFromCallMode(httpCallMode);
     List<Event> events = EventsGenerator.generateEvents(1);
-    Response response = httpCall.syncHttpCallWithEventsBuffer(events);
+    Response response = httpCall.makeRequest(events);
     assertEquals(413, response.code);
     assertEquals(Status.PAYLOAD_TOO_LARGE, response.status);
     assertNull(response.rateLimitBody);
@@ -129,7 +120,7 @@ public class HttpCallTest {
 
     HttpCall httpCall = getHttpCallFromCallMode(httpCallMode);
     List<Event> events = EventsGenerator.generateEvents(1);
-    Response response = httpCall.syncHttpCallWithEventsBuffer(events);
+    Response response = httpCall.makeRequest(events);
     assertEquals(400, response.code);
     assertEquals(Status.INVALID, response.status);
     assertNull(response.rateLimitBody);
@@ -163,7 +154,7 @@ public class HttpCallTest {
     assertThrows(
         AmplitudeInvalidAPIKeyException.class,
         () -> {
-          httpCall.syncHttpCallWithEventsBuffer(events);
+          httpCall.makeRequest(events);
         },
         errorMsg);
     verifyConnectionOption(connection);
@@ -194,7 +185,7 @@ public class HttpCallTest {
 
     HttpCall httpCall = getHttpCallFromCallMode(httpCallMode);
     List<Event> events = EventsGenerator.generateEvents(1);
-    Response response = httpCall.syncHttpCallWithEventsBuffer(events);
+    Response response = httpCall.makeRequest(events);
     assertEquals(429, response.code);
     assertEquals(Status.RATELIMIT, response.status);
     assertNotNull(response.rateLimitBody);
@@ -223,7 +214,7 @@ public class HttpCallTest {
     mockURLStreamHandler.setConnection(url, connection);
     HttpCall httpCall = getHttpCallFromCallMode(httpCallMode);
     List<Event> events = EventsGenerator.generateEvents(1);
-    Response response = httpCall.syncHttpCallWithEventsBuffer(events);
+    Response response = httpCall.makeRequest(events);
     assertEquals(408, response.code);
     assertEquals(Status.TIMEOUT, response.status);
     verifyConnectionOption(connection);
@@ -231,15 +222,12 @@ public class HttpCallTest {
 
   static Stream<Arguments> httpCallArguments() {
     return Stream.of(
-        arguments(HttpCallMode.REGULAR_HTTPCALL, Constants.API_URL),
-        arguments(HttpCallMode.BATCH_HTTPCALL, Constants.BATCH_API_URL));
+        arguments(HttpCallMode.REGULAR, Constants.API_URL),
+        arguments(HttpCallMode.BATCH, Constants.BATCH_API_URL));
   }
 
   private HttpCall getHttpCallFromCallMode(HttpCallMode httpCallMode) {
-    if (httpCallMode == HttpCallMode.BATCH_HTTPCALL) {
-      return new BatchHttpCall(apiKey, Constants.BATCH_API_URL);
-    }
-    return new GeneralHttpCall(apiKey, Constants.API_URL);
+    return new HttpCall(apiKey, httpCallMode == HttpCallMode.BATCH ? Constants.BATCH_API_URL : Constants.API_URL);
   }
 
   private void verifyConnectionOption(HttpsURLConnection connection) throws ProtocolException {

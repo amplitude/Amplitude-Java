@@ -1,35 +1,18 @@
 package com.amplitude;
 
 import com.amplitude.exception.AmplitudeInvalidAPIKeyException;
-
 import org.json.JSONArray;
 import org.json.JSONObject;
 
 import javax.net.ssl.HttpsURLConnection;
+import java.io.*;
 import java.net.URL;
-
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-import java.io.IOException;
-
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
-enum HttpCallMode {
-  REGULAR_HTTPCALL,
-  BATCH_HTTPCALL
-}
-
-public abstract class HttpCall {
-  /*
-   * Use HTTPUrlConnection object to make async HTTP request,
-   * using data from event like device, class name, event props, etc.
-   *
-   * @return The response object which contains a code and other information
-   */
-  private String apiKey;
-  private String serverUrl;
+public class HttpCall {
+  private final String apiKey;
+  private final String serverUrl;
 
   protected HttpCall(String apiKey, String serverUrl) {
     this.apiKey = apiKey;
@@ -40,8 +23,7 @@ public abstract class HttpCall {
     return this.serverUrl;
   }
 
-  protected Response syncHttpCallWithEventsBuffer(List<Event> events)
-      throws AmplitudeInvalidAPIKeyException {
+  protected Response makeRequest(List<Event> events) throws AmplitudeInvalidAPIKeyException {
     String apiUrl = getApiUrl();
     HttpsURLConnection connection;
     InputStream inputStream = null;
@@ -67,7 +49,7 @@ public abstract class HttpCall {
 
       String bodyString = bodyJson.toString();
       OutputStream os = connection.getOutputStream();
-      byte[] input = bodyString.getBytes("UTF-8");
+      byte[] input = bodyString.getBytes(StandardCharsets.UTF_8);
       os.write(input, 0, input.length);
 
       responseCode = connection.getResponseCode();
@@ -87,8 +69,8 @@ public abstract class HttpCall {
       JSONObject responseJson = new JSONObject(sb.toString());
       responseBody = Response.populateResponse(responseJson);
     } catch (IOException e) {
-      // This handles UnknownHostException, when the SDK has no internet.
-      // Also SocketTimeoutException, when the HTTP request times out.
+      // This handles UnknownHostException, when there is no internet connection.
+      // SocketTimeoutException will be triggered when the HTTP request times out.
       JSONObject timesOutResponse = new JSONObject();
       timesOutResponse.put("status", Status.TIMEOUT);
       timesOutResponse.put("code", 408);

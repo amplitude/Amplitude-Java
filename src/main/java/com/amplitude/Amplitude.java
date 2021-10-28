@@ -1,20 +1,13 @@
 package com.amplitude;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Queue;
+import com.amplitude.exception.AmplitudeInvalidAPIKeyException;
+
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
-import com.amplitude.exception.AmplitudeInvalidAPIKeyException;
-
 public class Amplitude {
-
-  public static final String TAG = Amplitude.class.getName();
-
   private static Map<String, Amplitude> instances = new HashMap<>();
   private String apiKey;
   private String serverUrl;
@@ -68,7 +61,7 @@ public class Amplitude {
    */
   public void init(String key) {
     apiKey = key;
-    updateHttpCall(HttpCallMode.REGULAR_HTTPCALL);
+    updateHttpCall(HttpCallMode.REGULAR);
   }
 
   /**
@@ -91,16 +84,7 @@ public class Amplitude {
    * @param isBatchMode if using batch upload or not;
    */
   public void useBatchMode(Boolean isBatchMode) {
-    updateHttpCall(isBatchMode ? HttpCallMode.BATCH_HTTPCALL : HttpCallMode.REGULAR_HTTPCALL);
-  }
-
-  private void updateHttpCall(HttpCallMode updatedHttpCallMode) {
-    httpCallMode = updatedHttpCallMode;
-    if (updatedHttpCallMode == HttpCallMode.BATCH_HTTPCALL) {
-      httpCall = new BatchHttpCall(apiKey, serverUrl != null ? serverUrl : Constants.BATCH_API_URL);
-    } else {
-      httpCall = new GeneralHttpCall(apiKey, serverUrl != null ? serverUrl : Constants.API_URL);
-    }
+    updateHttpCall(isBatchMode ? HttpCallMode.BATCH : HttpCallMode.REGULAR);
   }
 
   /**
@@ -126,6 +110,49 @@ public class Amplitude {
     }
   }
 
+
+  /**
+   * Forces events currently in the event buffer to be sent to Amplitude API endpoint. Only one
+   * thread may flush at a time. Next flushes will happen immediately after.
+   */
+  public synchronized void flushEvents() {
+    if (eventsToSend.size() > 0) {
+      List<Event> eventsInTransit = new ArrayList<>(eventsToSend);
+      eventsToSend.clear();
+      CompletableFuture.supplyAsync(
+                      () -> {
+                        Response response = null;
+                        try {
+                          response = httpCall.makeRequest(eventsInTransit);
+                        } catch (AmplitudeInvalidAPIKeyException e) {
+                          throw new CompletionException(e);
+                        }
+                        return response;
+                      })
+              .thenAcceptAsync(
+                      response -> {
+                        Status status = response.status;
+                        if (Retry.shouldRetryForStatus(status)) {
+                          Retry.sendEventsWithRetry(eventsInTransit, response, httpCall);
+                        }
+                      })
+              .exceptionally(
+                      exception -> {
+                        logger.error("Invalid API Key", exception.getMessage());
+                        return null;
+                      });
+    }
+  }
+
+  private void updateHttpCall(HttpCallMode updatedHttpCallMode) {
+    httpCallMode = updatedHttpCallMode;
+    if (updatedHttpCallMode == HttpCallMode.BATCH) {
+      httpCall = new HttpCall(apiKey, serverUrl != null ? serverUrl : Constants.BATCH_API_URL);
+    } else {
+      httpCall = new HttpCall(apiKey, serverUrl != null ? serverUrl : Constants.API_URL);
+    }
+  }
+
   private void tryToFlushEventsIfNotFlushing() {
     if (!aboutToStartFlushing) {
       aboutToStartFlushing = true;
@@ -141,39 +168,6 @@ public class Amplitude {
                 aboutToStartFlushing = false;
               });
       flushThread.start();
-    }
-  }
-
-  /**
-   * Forces events currently in the event buffer to be sent to Amplitude API endpoint. Only one
-   * thread may flush at a time. Next flushes will happen immediately after.
-   */
-  public synchronized void flushEvents() {
-    if (eventsToSend.size() > 0) {
-      List<Event> eventsInTransit = new ArrayList<>(eventsToSend);
-      eventsToSend.clear();
-      CompletableFuture.supplyAsync(
-              () -> {
-                Response response = null;
-                try {
-                  response = httpCall.syncHttpCallWithEventsBuffer(eventsInTransit);
-                } catch (AmplitudeInvalidAPIKeyException e) {
-                  throw new CompletionException(e);
-                }
-                return response;
-              })
-          .thenAcceptAsync(
-              response -> {
-                Status status = response.status;
-                if (Retry.shouldRetryForStatus(status)) {
-                  Retry.sendEventsWithRetry(eventsInTransit, response, httpCall);
-                }
-              })
-          .exceptionally(
-              exception -> {
-                logger.error("Invalid API Key", exception.getMessage());
-                return null;
-              });
     }
   }
 }

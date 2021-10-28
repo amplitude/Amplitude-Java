@@ -1,7 +1,6 @@
 package com.amplitude;
 
 import com.amplitude.exception.AmplitudeInvalidAPIKeyException;
-
 import org.json.JSONObject;
 
 public class Response {
@@ -31,7 +30,7 @@ public class Response {
       res.successBody.put("serverUploadTime", json.getLong("server_upload_time"));
     } else if (status == Status.INVALID) {
       res.error = Utils.getStringValueWithKey(json, "error");
-      if (hasInvalidAPIKey(res.error)) throw new AmplitudeInvalidAPIKeyException(res.error);
+      if (hasInvalidAPIKey(res.error)) throw new AmplitudeInvalidAPIKeyException();
       res.invalidRequestBody = new JSONObject();
       res.invalidRequestBody.put(
           "missingField", Utils.getStringValueWithKey(json, "missing_field"));
