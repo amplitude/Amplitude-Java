@@ -1,6 +1,7 @@
 package com.amplitude;
 
 import com.amplitude.exception.AmplitudeInvalidAPIKeyException;
+
 import org.json.JSONArray;
 import org.json.JSONObject;
 

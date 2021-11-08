@@ -1,6 +1,12 @@
 package com.amplitude;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.List;
+
 import com.amplitude.exception.AmplitudeInvalidAPIKeyException;
+
 import org.json.JSONObject;
 
 public class Response {
@@ -60,5 +66,45 @@ public class Response {
       res.rateLimitBody.put("exceededDailyQuotaUsers", exceededDailyQuotaUsers);
     }
     return res;
+  }
+
+  protected boolean isUserOrDeviceExceedQuote(String userId, String deviceId) {
+    if (status == Status.RATELIMIT && rateLimitBody != null) {
+      JSONObject exceededDailyQuotaUsers = rateLimitBody.getJSONObject("exceededDailyQuotaUsers");
+      JSONObject exceededDailyQuotaDevices = rateLimitBody.getJSONObject("exceededDailyQuotaDevices");
+      if ((userId.length() > 0 && exceededDailyQuotaUsers.has(userId))
+          || (deviceId.length() > 0 && exceededDailyQuotaDevices.has(deviceId))) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  protected int[] collectInvalidEventIndices() {
+    if (status == Status.INVALID && invalidRequestBody != null) {
+      List<Integer> invalidFieldsIndices =
+          collectIndicesWithRequestBody(invalidRequestBody, "eventsWithInvalidFields");
+      List<Integer> missingFieldsIndices =
+          collectIndicesWithRequestBody(invalidRequestBody, "eventsWithMissingFields");
+      invalidFieldsIndices.addAll(missingFieldsIndices);
+      Collections.sort(invalidFieldsIndices);
+      return invalidFieldsIndices.stream().distinct().mapToInt(i -> i).toArray();
+    }
+    return new int[] {};
+  }
+
+  private List<Integer> collectIndicesWithRequestBody(JSONObject requestBody, String key) {
+    List<Integer> invalidIndices = new ArrayList<>();
+    JSONObject fields = requestBody.getJSONObject(key);
+    Iterator<String> fieldKeys = fields.keys();
+    while (fieldKeys.hasNext()) {
+      String fieldKey = fieldKeys.next();
+      int[] eventIndices = Utils.jsonArrayToIntArray(fields.getJSONArray(fieldKey));
+      for (int eventIndex : eventIndices) {
+        invalidIndices.add(eventIndex);
+      }
+    }
+    Collections.sort(invalidIndices);
+    return invalidIndices;
   }
 }

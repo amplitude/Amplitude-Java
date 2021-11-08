@@ -1,10 +1,6 @@
 package com.amplitude;
 
-import com.amplitude.exception.AmplitudeInvalidAPIKeyException;
-
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionException;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class Amplitude {
@@ -19,6 +15,7 @@ public class Amplitude {
 
   private HttpCallMode httpCallMode;
   private HttpCall httpCall;
+  private HttpTransport httpTransport;
 
   /**
    * Private internal constructor for Amplitude. Please use `getInstance(String name)` or
@@ -28,6 +25,7 @@ public class Amplitude {
     logger = new AmplitudeLog();
     eventsToSend = new ConcurrentLinkedQueue<>();
     aboutToStartFlushing = false;
+    httpTransport = new HttpTransport(httpCall, null, logger);
   }
 
   /**
@@ -97,6 +95,14 @@ public class Amplitude {
   }
 
   /**
+   * Set event callbacks which are triggered after event sent
+   * @param eventCallbacks
+   */
+  public void setEventCallbacks(List<AmplitudeEventCallback> eventCallbacks) {
+    httpTransport.setEventCallbacks(eventCallbacks);
+  }
+
+  /**
    * Log an event to the Amplitude HTTP V2 API through the Java SDK
    *
    * @param event The event to be sent
@@ -106,10 +112,9 @@ public class Amplitude {
     if (eventsToSend.size() >= Constants.EVENT_BUF_COUNT) {
       flushEvents();
     } else {
-      tryToFlushEventsIfNotFlushing();
+      scheduleFlushEvents();
     }
   }
-
 
   /**
    * Forces events currently in the event buffer to be sent to Amplitude API endpoint. Only one
@@ -119,28 +124,7 @@ public class Amplitude {
     if (eventsToSend.size() > 0) {
       List<Event> eventsInTransit = new ArrayList<>(eventsToSend);
       eventsToSend.clear();
-      CompletableFuture.supplyAsync(
-                      () -> {
-                        Response response = null;
-                        try {
-                          response = httpCall.makeRequest(eventsInTransit);
-                        } catch (AmplitudeInvalidAPIKeyException e) {
-                          throw new CompletionException(e);
-                        }
-                        return response;
-                      })
-              .thenAcceptAsync(
-                      response -> {
-                        Status status = response.status;
-                        if (Retry.shouldRetryForStatus(status)) {
-                          Retry.sendEventsWithRetry(eventsInTransit, response, httpCall);
-                        }
-                      })
-              .exceptionally(
-                      exception -> {
-                        logger.error("Invalid API Key", exception.getMessage());
-                        return null;
-                      });
+      httpTransport.sendEventsWithRetry(eventsInTransit);
     }
   }
 
@@ -151,9 +135,10 @@ public class Amplitude {
     } else {
       httpCall = new HttpCall(apiKey, serverUrl != null ? serverUrl : Constants.API_URL);
     }
+    httpTransport.setHttpCall(httpCall);
   }
 
-  private void tryToFlushEventsIfNotFlushing() {
+  private void scheduleFlushEvents() {
     if (!aboutToStartFlushing) {
       aboutToStartFlushing = true;
       Thread flushThread =

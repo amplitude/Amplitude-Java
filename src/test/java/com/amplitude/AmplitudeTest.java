@@ -2,6 +2,7 @@ package com.amplitude;
 
 import com.amplitude.exception.AmplitudeInvalidAPIKeyException;
 import com.amplitude.util.EventsGenerator;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -9,6 +10,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.lang.reflect.Field;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -55,6 +57,14 @@ public class AmplitudeTest {
               latch.countDown();
               return response;
             });
+    List<AmplitudeEventCallback> eventCallbacks = new ArrayList<>();
+    eventCallbacks.add(
+        new AmplitudeEventCallback() {
+          @Override
+          public void onEventSent(Event event, int status, String message) {
+            assertEquals(200, status);
+          }
+        });
     for (Event event : events) {
       amplitude.logEvent(event);
     }
@@ -158,12 +168,35 @@ public class AmplitudeTest {
     assertEquals(httpCall.getApiUrl(), euApiUrl);
   }
 
+  @Test
+  public void testSetEventCallbacks() throws NoSuchFieldException, IllegalAccessException {
+    Amplitude amplitude = Amplitude.getInstance("testSetEventCallbacks");
+    List<AmplitudeEventCallback> eventCallbacks = new ArrayList<>();
+    amplitude.setEventCallbacks(eventCallbacks);
+    assertEquals(eventCallbacks, getEventCallbacks(amplitude));
+  }
+
   private HttpCall getMockHttpCall(Amplitude amplitude, boolean useBatch)
       throws NoSuchFieldException, IllegalAccessException {
     HttpCall httpCall = mock(HttpCall.class);
+
     Field httpCallField = amplitude.getClass().getDeclaredField("httpCall");
+    Field httpTransportField = amplitude.getClass().getDeclaredField("httpTransport");
     httpCallField.setAccessible(true);
     httpCallField.set(amplitude, httpCall);
+    httpTransportField.setAccessible(true);
+    HttpTransport httpTransport = (HttpTransport) httpTransportField.get(amplitude);
+    httpTransport.setHttpCall(httpCall);
     return httpCall;
+  }
+
+  private List<AmplitudeEventCallback> getEventCallbacks(Amplitude amplitude)
+      throws NoSuchFieldException, IllegalAccessException {
+    Field httpTransportField = amplitude.getClass().getDeclaredField("httpTransport");
+    httpTransportField.setAccessible(true);
+    HttpTransport httpTransport = (HttpTransport) httpTransportField.get(amplitude);
+    Field eventCallbacksField = httpTransport.getClass().getDeclaredField("eventCallbacks");
+    eventCallbacksField.setAccessible(true);
+    return (List<AmplitudeEventCallback>) eventCallbacksField.get(httpTransport);
   }
 }
