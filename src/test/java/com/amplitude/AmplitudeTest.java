@@ -57,14 +57,14 @@ public class AmplitudeTest {
               latch.countDown();
               return response;
             });
-    List<AmplitudeEventCallback> eventCallbacks = new ArrayList<>();
-    eventCallbacks.add(
+    AmplitudeEventCallback eventCallback =
         new AmplitudeEventCallback() {
           @Override
           public void onEventSent(Event event, int status, String message) {
             assertEquals(200, status);
           }
-        });
+        };
+    amplitude.setEventCallback(eventCallback);
     for (Event event : events) {
       amplitude.logEvent(event);
     }
