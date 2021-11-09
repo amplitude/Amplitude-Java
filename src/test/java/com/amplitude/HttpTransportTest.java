@@ -8,7 +8,6 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -83,17 +82,16 @@ public class HttpTransportTest {
             });
 
     List<Event> events = EventsGenerator.generateEvents(10);
-    List<AmplitudeEventCallback> eventCallbacks = new ArrayList<>();
     Map<Event, Integer> resultMap = new HashMap<>();
-    eventCallbacks.add(
+    AmplitudeEventCallback eventCallback =
         new AmplitudeEventCallback() {
           @Override
           public void onEventSent(Event event, int status, String message) {
             resultMap.put(event, status);
           }
-        });
+        };
     httpTransport.setHttpCall(httpCall);
-    httpTransport.setEventCallbacks(eventCallbacks);
+    httpTransport.setEventCallback(eventCallback);
     httpTransport.retryEvents(events, invalidResponse);
     assertTrue(latch.await(1L, TimeUnit.SECONDS));
     verify(httpCall, times(4)).makeRequest(anyList());
@@ -122,17 +120,16 @@ public class HttpTransportTest {
             });
 
     List<Event> events = EventsGenerator.generateEvents(10);
-    List<AmplitudeEventCallback> eventCallbacks = new ArrayList<>();
     Map<Event, Integer> resultMap = new HashMap<>();
-    eventCallbacks.add(
+    AmplitudeEventCallback eventCallback =
         new AmplitudeEventCallback() {
           @Override
           public void onEventSent(Event event, int status, String message) {
             resultMap.put(event, status);
           }
-        });
+        };
     httpTransport.setHttpCall(httpCall);
-    httpTransport.setEventCallbacks(eventCallbacks);
+    httpTransport.setEventCallback(eventCallback);
     httpTransport.retryEvents(events, invalidResponse);
     assertTrue(latch.await(1L, TimeUnit.SECONDS));
     verify(httpCall, times(1)).makeRequest(anyList());
@@ -167,17 +164,16 @@ public class HttpTransportTest {
             });
 
     List<Event> events = EventsGenerator.generateEvents(10);
-    List<AmplitudeEventCallback> eventCallbacks = new ArrayList<>();
     Map<Event, Integer> resultMap = new HashMap<>();
-    eventCallbacks.add(
+    AmplitudeEventCallback eventCallback =
         new AmplitudeEventCallback() {
           @Override
           public void onEventSent(Event event, int status, String message) {
             resultMap.put(event, status);
           }
-        });
+        };
     httpTransport.setHttpCall(httpCall);
-    httpTransport.setEventCallbacks(eventCallbacks);
+    httpTransport.setEventCallback(eventCallback);
     httpTransport.retryEvents(events, rateLimitResponse);
     assertTrue(latch.await(1L, TimeUnit.SECONDS));
     verify(httpCall, times(2)).makeRequest(anyList());
@@ -195,16 +191,15 @@ public class HttpTransportTest {
   public void testRetryEventWithUserExceedQuota() {
     Response rateLimitResponse = getRateLimitResponse(true);
     List<Event> events = EventsGenerator.generateEvents(10);
-    List<AmplitudeEventCallback> eventCallbacks = new ArrayList<>();
     Map<Event, Integer> resultMap = new HashMap<>();
-    eventCallbacks.add(
+    AmplitudeEventCallback eventCallback =
         new AmplitudeEventCallback() {
           @Override
           public void onEventSent(Event event, int status, String message) {
             resultMap.put(event, status);
           }
-        });
-    httpTransport.setEventCallbacks(eventCallbacks);
+        };
+    httpTransport.setEventCallback(eventCallback);
     httpTransport.retryEvents(events, rateLimitResponse);
     for (int i = 0; i < events.size(); i++) {
       assertEquals(429, resultMap.get(events.get(i)));
@@ -227,17 +222,16 @@ public class HttpTransportTest {
             });
 
     List<Event> events = EventsGenerator.generateEvents(10);
-    List<AmplitudeEventCallback> eventCallbacks = new ArrayList<>();
     Map<Event, Integer> resultMap = new HashMap<>();
-    eventCallbacks.add(
+    AmplitudeEventCallback eventCallback =
         new AmplitudeEventCallback() {
           @Override
           public void onEventSent(Event event, int status, String message) {
             resultMap.put(event, status);
           }
-        });
+        };
     httpTransport.setHttpCall(httpCall);
-    httpTransport.setEventCallbacks(eventCallbacks);
+    httpTransport.setEventCallback(eventCallback);
     httpTransport.retryEvents(events, invalidResponse);
     assertTrue(latch.await(1L, TimeUnit.SECONDS));
     verify(httpCall, times(1)).makeRequest(anyList());

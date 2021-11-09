@@ -169,11 +169,15 @@ public class AmplitudeTest {
   }
 
   @Test
-  public void testSetEventCallbacks() throws NoSuchFieldException, IllegalAccessException {
-    Amplitude amplitude = Amplitude.getInstance("testSetEventCallbacks");
-    List<AmplitudeEventCallback> eventCallbacks = new ArrayList<>();
-    amplitude.setEventCallbacks(eventCallbacks);
-    assertEquals(eventCallbacks, getEventCallbacks(amplitude));
+  public void testSetEventCallback() throws NoSuchFieldException, IllegalAccessException {
+    Amplitude amplitude = Amplitude.getInstance("testSetEventCallback");
+    AmplitudeEventCallback eventCallbacks = new AmplitudeEventCallback() {
+      @Override public void onEventSent(Event event, int status, String message) {
+
+      }
+    };
+    amplitude.setEventCallback(eventCallbacks);
+    assertEquals(eventCallbacks, getEventCallback(amplitude));
   }
 
   private HttpCall getMockHttpCall(Amplitude amplitude, boolean useBatch)
@@ -190,13 +194,13 @@ public class AmplitudeTest {
     return httpCall;
   }
 
-  private List<AmplitudeEventCallback> getEventCallbacks(Amplitude amplitude)
+  private AmplitudeEventCallback getEventCallback(Amplitude amplitude)
       throws NoSuchFieldException, IllegalAccessException {
     Field httpTransportField = amplitude.getClass().getDeclaredField("httpTransport");
     httpTransportField.setAccessible(true);
     HttpTransport httpTransport = (HttpTransport) httpTransportField.get(amplitude);
-    Field eventCallbacksField = httpTransport.getClass().getDeclaredField("eventCallbacks");
-    eventCallbacksField.setAccessible(true);
-    return (List<AmplitudeEventCallback>) eventCallbacksField.get(httpTransport);
+    Field eventCallbackField = httpTransport.getClass().getDeclaredField("eventCallback");
+    eventCallbackField.setAccessible(true);
+    return (AmplitudeEventCallback) eventCallbackField.get(httpTransport);
   }
 }

@@ -29,12 +29,11 @@ class HttpTransport {
 
   private HttpCall httpCall;
   private AmplitudeLog logger;
-  private List<AmplitudeEventCallback> eventCallbacks;
+  private AmplitudeEventCallback eventCallback;
 
-  HttpTransport(
-      HttpCall httpCall, List<AmplitudeEventCallback> eventCallbacks, AmplitudeLog logger) {
+  HttpTransport(HttpCall httpCall, AmplitudeEventCallback eventCallback, AmplitudeLog logger) {
     this.httpCall = httpCall;
-    this.eventCallbacks = eventCallbacks;
+    this.eventCallback = eventCallback;
     this.logger = logger;
   }
 
@@ -68,8 +67,8 @@ class HttpTransport {
     this.httpCall = httpCall;
   }
 
-  public void setEventCallbacks(List<AmplitudeEventCallback> eventCallbacks) {
-    this.eventCallbacks = eventCallbacks;
+  public void setEventCallback(AmplitudeEventCallback eventCallback) {
+    this.eventCallback = eventCallback;
   }
 
   private CompletableFuture<Response> sendEvents(List<Event> events) {
@@ -306,14 +305,12 @@ class HttpTransport {
   }
 
   private void triggerEventCallbacks(List<Event> events, int status, String message) {
-    if (eventCallbacks == null || eventCallbacks.isEmpty() || events == null || events.isEmpty()) {
+    if (eventCallback == null || events == null || events.isEmpty()) {
       return;
     }
 
     for (Event event : events) {
-      for (AmplitudeEventCallback eventCallback : eventCallbacks) {
-        eventCallback.onEventSent(event, status, message);
-      }
+      eventCallback.onEventSent(event, status, message);
     }
   }
 }

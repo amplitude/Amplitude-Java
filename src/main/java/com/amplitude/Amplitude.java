@@ -96,10 +96,10 @@ public class Amplitude {
 
   /**
    * Set event callbacks which are triggered after event sent
-   * @param eventCallbacks
+   * @param eventCallback AmplitudeEventCallback or null to clean up.
    */
-  public void setEventCallbacks(List<AmplitudeEventCallback> eventCallbacks) {
-    httpTransport.setEventCallbacks(eventCallbacks);
+  public void setEventCallback(AmplitudeEventCallback eventCallback) {
+    httpTransport.setEventCallback(eventCallback);
   }
 
   /**
