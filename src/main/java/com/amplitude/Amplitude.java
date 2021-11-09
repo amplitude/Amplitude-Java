@@ -95,7 +95,7 @@ public class Amplitude {
   }
 
   /**
-   * Set event callbacks which are triggered after event sent
+   * Set event callback which are triggered after event sent
    * @param eventCallback AmplitudeEventCallback or null to clean up.
    */
   public void setEventCallback(AmplitudeEventCallback eventCallback) {
