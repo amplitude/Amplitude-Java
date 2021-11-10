@@ -56,14 +56,14 @@ public class AmplitudeTest {
               latch.countDown();
               return response;
             });
-    AmplitudeCallbacks eventCallback =
+    AmplitudeCallbacks callbacks =
         new AmplitudeCallbacks() {
           @Override
           public void onLogEventServerResponse(Event event, int status, String message) {
             assertEquals(200, status);
           }
         };
-    amplitude.setEventCallback(eventCallback);
+    amplitude.setCallbacks(callbacks);
     for (Event event : events) {
       amplitude.logEvent(event);
     }
@@ -168,15 +168,15 @@ public class AmplitudeTest {
   }
 
   @Test
-  public void testSetEventCallback() throws NoSuchFieldException, IllegalAccessException {
-    Amplitude amplitude = Amplitude.getInstance("testSetEventCallback");
-    AmplitudeCallbacks eventCallbacks = new AmplitudeCallbacks() {
-      @Override public void onLogEventServerResponse(Event event, int status, String message) {
-
-      }
-    };
-    amplitude.setEventCallback(eventCallbacks);
-    assertEquals(eventCallbacks, getEventCallback(amplitude));
+  public void testSetCallback() throws NoSuchFieldException, IllegalAccessException {
+    Amplitude amplitude = Amplitude.getInstance("testSetCallbacks");
+    AmplitudeCallbacks callbacks =
+        new AmplitudeCallbacks() {
+          @Override
+          public void onLogEventServerResponse(Event event, int status, String message) {}
+        };
+    amplitude.setCallbacks(callbacks);
+    assertEquals(callbacks, getCallbacks(amplitude));
   }
 
   private HttpCall getMockHttpCall(Amplitude amplitude, boolean useBatch)
@@ -193,13 +193,13 @@ public class AmplitudeTest {
     return httpCall;
   }
 
-  private AmplitudeCallbacks getEventCallback(Amplitude amplitude)
+  private AmplitudeCallbacks getCallbacks(Amplitude amplitude)
       throws NoSuchFieldException, IllegalAccessException {
     Field httpTransportField = amplitude.getClass().getDeclaredField("httpTransport");
     httpTransportField.setAccessible(true);
     HttpTransport httpTransport = (HttpTransport) httpTransportField.get(amplitude);
-    Field eventCallbackField = httpTransport.getClass().getDeclaredField("eventCallback");
-    eventCallbackField.setAccessible(true);
-    return (AmplitudeCallbacks) eventCallbackField.get(httpTransport);
+    Field callbackField = httpTransport.getClass().getDeclaredField("callbacks");
+    callbackField.setAccessible(true);
+    return (AmplitudeCallbacks) callbackField.get(httpTransport);
   }
 }

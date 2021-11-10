@@ -16,7 +16,7 @@ public class DemoController {
     amplitude.init("8e07b9d451a7d07bd33f6e9ba5870f21");
     amplitude.logEvent(new Event("Test Event", "test_user_id"));
     amplitude.setLogMode(AmplitudeLog.LogMode.DEBUG);
-    AmplitudeCallbacks eventCallback =
+    AmplitudeCallbacks callbacks =
         new AmplitudeCallbacks() {
           @Override
           public void onLogEventServerResponse(Event event, int status, String message) {
@@ -25,7 +25,7 @@ public class DemoController {
                     "Event: %s sent. Status: %s, Message: %s", event.eventType, status, message));
           }
         };
-    amplitude.setEventCallback(eventCallback);
+    amplitude.setCallbacks(callbacks);
     amplitude.logEvent(new Event("Test Event", "test_user_id"));
     return "Amplitude Java SDK Demo: sending test event.";
   }

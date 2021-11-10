@@ -83,7 +83,7 @@ public class HttpTransportTest {
 
     List<Event> events = EventsGenerator.generateEvents(10);
     Map<Event, Integer> resultMap = new HashMap<>();
-    AmplitudeCallbacks eventCallback =
+    AmplitudeCallbacks callbacks =
         new AmplitudeCallbacks() {
           @Override
           public void onLogEventServerResponse(Event event, int status, String message) {
@@ -91,7 +91,7 @@ public class HttpTransportTest {
           }
         };
     httpTransport.setHttpCall(httpCall);
-    httpTransport.setEventCallback(eventCallback);
+    httpTransport.setCallbacks(callbacks);
     httpTransport.retryEvents(events, invalidResponse);
     assertTrue(latch.await(1L, TimeUnit.SECONDS));
     verify(httpCall, times(4)).makeRequest(anyList());
@@ -121,7 +121,7 @@ public class HttpTransportTest {
 
     List<Event> events = EventsGenerator.generateEvents(10);
     Map<Event, Integer> resultMap = new HashMap<>();
-    AmplitudeCallbacks eventCallback =
+    AmplitudeCallbacks callbacks =
         new AmplitudeCallbacks() {
           @Override
           public void onLogEventServerResponse(Event event, int status, String message) {
@@ -129,7 +129,7 @@ public class HttpTransportTest {
           }
         };
     httpTransport.setHttpCall(httpCall);
-    httpTransport.setEventCallback(eventCallback);
+    httpTransport.setCallbacks(callbacks);
     httpTransport.retryEvents(events, invalidResponse);
     assertTrue(latch.await(1L, TimeUnit.SECONDS));
     verify(httpCall, times(1)).makeRequest(anyList());
@@ -165,7 +165,7 @@ public class HttpTransportTest {
 
     List<Event> events = EventsGenerator.generateEvents(10);
     Map<Event, Integer> resultMap = new HashMap<>();
-    AmplitudeCallbacks eventCallback =
+    AmplitudeCallbacks callbacks =
         new AmplitudeCallbacks() {
           @Override
           public void onLogEventServerResponse(Event event, int status, String message) {
@@ -173,7 +173,7 @@ public class HttpTransportTest {
           }
         };
     httpTransport.setHttpCall(httpCall);
-    httpTransport.setEventCallback(eventCallback);
+    httpTransport.setCallbacks(callbacks);
     httpTransport.retryEvents(events, rateLimitResponse);
     assertTrue(latch.await(1L, TimeUnit.SECONDS));
     verify(httpCall, times(2)).makeRequest(anyList());
@@ -192,14 +192,14 @@ public class HttpTransportTest {
     Response rateLimitResponse = getRateLimitResponse(true);
     List<Event> events = EventsGenerator.generateEvents(10);
     Map<Event, Integer> resultMap = new HashMap<>();
-    AmplitudeCallbacks eventCallback =
+    AmplitudeCallbacks callbacks =
         new AmplitudeCallbacks() {
           @Override
           public void onLogEventServerResponse(Event event, int status, String message) {
             resultMap.put(event, status);
           }
         };
-    httpTransport.setEventCallback(eventCallback);
+    httpTransport.setCallbacks(callbacks);
     httpTransport.retryEvents(events, rateLimitResponse);
     for (int i = 0; i < events.size(); i++) {
       assertEquals(429, resultMap.get(events.get(i)));
@@ -223,7 +223,7 @@ public class HttpTransportTest {
 
     List<Event> events = EventsGenerator.generateEvents(10);
     Map<Event, Integer> resultMap = new HashMap<>();
-    AmplitudeCallbacks eventCallback =
+    AmplitudeCallbacks callbacks =
         new AmplitudeCallbacks() {
           @Override
           public void onLogEventServerResponse(Event event, int status, String message) {
@@ -231,7 +231,7 @@ public class HttpTransportTest {
           }
         };
     httpTransport.setHttpCall(httpCall);
-    httpTransport.setEventCallback(eventCallback);
+    httpTransport.setCallbacks(callbacks);
     httpTransport.retryEvents(events, invalidResponse);
     assertTrue(latch.await(1L, TimeUnit.SECONDS));
     verify(httpCall, times(1)).makeRequest(anyList());

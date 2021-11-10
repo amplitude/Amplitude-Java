@@ -1,6 +1,6 @@
 package com.amplitude;
 
-/** AmplitudeEventCallback Interface */
+/** AmplitudeCallbacks Interface */
 public interface AmplitudeCallbacks {
   /**
    * Triggered when event is sent or failed
