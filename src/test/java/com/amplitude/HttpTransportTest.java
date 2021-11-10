@@ -83,10 +83,10 @@ public class HttpTransportTest {
 
     List<Event> events = EventsGenerator.generateEvents(10);
     Map<Event, Integer> resultMap = new HashMap<>();
-    AmplitudeEventCallback eventCallback =
-        new AmplitudeEventCallback() {
+    AmplitudeCallbacks eventCallback =
+        new AmplitudeCallbacks() {
           @Override
-          public void onEventSent(Event event, int status, String message) {
+          public void onLogEventServerResponse(Event event, int status, String message) {
             resultMap.put(event, status);
           }
         };
@@ -121,10 +121,10 @@ public class HttpTransportTest {
 
     List<Event> events = EventsGenerator.generateEvents(10);
     Map<Event, Integer> resultMap = new HashMap<>();
-    AmplitudeEventCallback eventCallback =
-        new AmplitudeEventCallback() {
+    AmplitudeCallbacks eventCallback =
+        new AmplitudeCallbacks() {
           @Override
-          public void onEventSent(Event event, int status, String message) {
+          public void onLogEventServerResponse(Event event, int status, String message) {
             resultMap.put(event, status);
           }
         };
@@ -165,10 +165,10 @@ public class HttpTransportTest {
 
     List<Event> events = EventsGenerator.generateEvents(10);
     Map<Event, Integer> resultMap = new HashMap<>();
-    AmplitudeEventCallback eventCallback =
-        new AmplitudeEventCallback() {
+    AmplitudeCallbacks eventCallback =
+        new AmplitudeCallbacks() {
           @Override
-          public void onEventSent(Event event, int status, String message) {
+          public void onLogEventServerResponse(Event event, int status, String message) {
             resultMap.put(event, status);
           }
         };
@@ -192,10 +192,10 @@ public class HttpTransportTest {
     Response rateLimitResponse = getRateLimitResponse(true);
     List<Event> events = EventsGenerator.generateEvents(10);
     Map<Event, Integer> resultMap = new HashMap<>();
-    AmplitudeEventCallback eventCallback =
-        new AmplitudeEventCallback() {
+    AmplitudeCallbacks eventCallback =
+        new AmplitudeCallbacks() {
           @Override
-          public void onEventSent(Event event, int status, String message) {
+          public void onLogEventServerResponse(Event event, int status, String message) {
             resultMap.put(event, status);
           }
         };
@@ -223,10 +223,10 @@ public class HttpTransportTest {
 
     List<Event> events = EventsGenerator.generateEvents(10);
     Map<Event, Integer> resultMap = new HashMap<>();
-    AmplitudeEventCallback eventCallback =
-        new AmplitudeEventCallback() {
+    AmplitudeCallbacks eventCallback =
+        new AmplitudeCallbacks() {
           @Override
-          public void onEventSent(Event event, int status, String message) {
+          public void onLogEventServerResponse(Event event, int status, String message) {
             resultMap.put(event, status);
           }
         };

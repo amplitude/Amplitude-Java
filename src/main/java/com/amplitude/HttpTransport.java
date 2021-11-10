@@ -29,9 +29,9 @@ class HttpTransport {
 
   private HttpCall httpCall;
   private AmplitudeLog logger;
-  private AmplitudeEventCallback eventCallback;
+  private AmplitudeCallbacks eventCallback;
 
-  HttpTransport(HttpCall httpCall, AmplitudeEventCallback eventCallback, AmplitudeLog logger) {
+  HttpTransport(HttpCall httpCall, AmplitudeCallbacks eventCallback, AmplitudeLog logger) {
     this.httpCall = httpCall;
     this.eventCallback = eventCallback;
     this.logger = logger;
@@ -67,7 +67,7 @@ class HttpTransport {
     this.httpCall = httpCall;
   }
 
-  public void setEventCallback(AmplitudeEventCallback eventCallback) {
+  public void setEventCallback(AmplitudeCallbacks eventCallback) {
     this.eventCallback = eventCallback;
   }
 
@@ -310,7 +310,7 @@ class HttpTransport {
     }
 
     for (Event event : events) {
-      eventCallback.onEventSent(event, status, message);
+      eventCallback.onLogEventServerResponse(event, status, message);
     }
   }
 }

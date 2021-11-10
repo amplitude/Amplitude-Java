@@ -10,7 +10,6 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.lang.reflect.Field;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -57,10 +56,10 @@ public class AmplitudeTest {
               latch.countDown();
               return response;
             });
-    AmplitudeEventCallback eventCallback =
-        new AmplitudeEventCallback() {
+    AmplitudeCallbacks eventCallback =
+        new AmplitudeCallbacks() {
           @Override
-          public void onEventSent(Event event, int status, String message) {
+          public void onLogEventServerResponse(Event event, int status, String message) {
             assertEquals(200, status);
           }
         };
@@ -171,8 +170,8 @@ public class AmplitudeTest {
   @Test
   public void testSetEventCallback() throws NoSuchFieldException, IllegalAccessException {
     Amplitude amplitude = Amplitude.getInstance("testSetEventCallback");
-    AmplitudeEventCallback eventCallbacks = new AmplitudeEventCallback() {
-      @Override public void onEventSent(Event event, int status, String message) {
+    AmplitudeCallbacks eventCallbacks = new AmplitudeCallbacks() {
+      @Override public void onLogEventServerResponse(Event event, int status, String message) {
 
       }
     };
@@ -194,13 +193,13 @@ public class AmplitudeTest {
     return httpCall;
   }
 
-  private AmplitudeEventCallback getEventCallback(Amplitude amplitude)
+  private AmplitudeCallbacks getEventCallback(Amplitude amplitude)
       throws NoSuchFieldException, IllegalAccessException {
     Field httpTransportField = amplitude.getClass().getDeclaredField("httpTransport");
     httpTransportField.setAccessible(true);
     HttpTransport httpTransport = (HttpTransport) httpTransportField.get(amplitude);
     Field eventCallbackField = httpTransport.getClass().getDeclaredField("eventCallback");
     eventCallbackField.setAccessible(true);
-    return (AmplitudeEventCallback) eventCallbackField.get(httpTransport);
+    return (AmplitudeCallbacks) eventCallbackField.get(httpTransport);
   }
 }
