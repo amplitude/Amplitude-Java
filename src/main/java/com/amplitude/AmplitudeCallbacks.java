@@ -1,7 +1,7 @@
 package com.amplitude;
 
-/** AmplitudeCallbacks Interface */
-public interface AmplitudeCallbacks {
+/** AmplitudeCallbacks Class */
+public class AmplitudeCallbacks {
   /**
    * Triggered when event is sent or failed
    *
@@ -9,5 +9,5 @@ public interface AmplitudeCallbacks {
    * @param status server response status code
    * @param message message for callback, success or error
    */
-  void onLogEventServerResponse(Event event, int status, String message);
+  public void onLogEventServerResponse(Event event, int status, String message) {}
 }
