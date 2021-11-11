@@ -2,6 +2,7 @@ package com.amplitude;
 
 import com.amplitude.exception.AmplitudeInvalidAPIKeyException;
 import com.amplitude.util.EventsGenerator;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -55,6 +56,14 @@ public class AmplitudeTest {
               latch.countDown();
               return response;
             });
+    AmplitudeCallbacks callbacks =
+        new AmplitudeCallbacks() {
+          @Override
+          public void onLogEventServerResponse(Event event, int status, String message) {
+            assertEquals(200, status);
+          }
+        };
+    amplitude.setCallbacks(callbacks);
     for (Event event : events) {
       amplitude.logEvent(event);
     }
@@ -158,12 +167,39 @@ public class AmplitudeTest {
     assertEquals(httpCall.getApiUrl(), euApiUrl);
   }
 
+  @Test
+  public void testSetCallback() throws NoSuchFieldException, IllegalAccessException {
+    Amplitude amplitude = Amplitude.getInstance("testSetCallbacks");
+    AmplitudeCallbacks callbacks =
+        new AmplitudeCallbacks() {
+          @Override
+          public void onLogEventServerResponse(Event event, int status, String message) {}
+        };
+    amplitude.setCallbacks(callbacks);
+    assertEquals(callbacks, getCallbacks(amplitude));
+  }
+
   private HttpCall getMockHttpCall(Amplitude amplitude, boolean useBatch)
       throws NoSuchFieldException, IllegalAccessException {
     HttpCall httpCall = mock(HttpCall.class);
+
     Field httpCallField = amplitude.getClass().getDeclaredField("httpCall");
+    Field httpTransportField = amplitude.getClass().getDeclaredField("httpTransport");
     httpCallField.setAccessible(true);
     httpCallField.set(amplitude, httpCall);
+    httpTransportField.setAccessible(true);
+    HttpTransport httpTransport = (HttpTransport) httpTransportField.get(amplitude);
+    httpTransport.setHttpCall(httpCall);
     return httpCall;
+  }
+
+  private AmplitudeCallbacks getCallbacks(Amplitude amplitude)
+      throws NoSuchFieldException, IllegalAccessException {
+    Field httpTransportField = amplitude.getClass().getDeclaredField("httpTransport");
+    httpTransportField.setAccessible(true);
+    HttpTransport httpTransport = (HttpTransport) httpTransportField.get(amplitude);
+    Field callbackField = httpTransport.getClass().getDeclaredField("callbacks");
+    callbackField.setAccessible(true);
+    return (AmplitudeCallbacks) callbackField.get(httpTransport);
   }
 }

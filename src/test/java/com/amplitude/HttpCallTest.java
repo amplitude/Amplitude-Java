@@ -1,9 +1,10 @@
 package com.amplitude;
 
 import com.amplitude.exception.AmplitudeInvalidAPIKeyException;
-import com.amplitude.util.EventsGenerator;
 import com.amplitude.util.MockHttpsURLConnectionHelper;
 import com.amplitude.util.MockURLStreamHandler;
+import com.amplitude.util.EventsGenerator;
+
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.junit.jupiter.api.BeforeEach;

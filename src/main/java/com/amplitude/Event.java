@@ -320,7 +320,7 @@ public class Event {
     return array;
   }
 
-  protected static String truncate(String value) {
+  protected String truncate(String value) {
     return value.length() <= Constants.MAX_STRING_LENGTH
         ? value
         : value.substring(0, Constants.MAX_STRING_LENGTH);
