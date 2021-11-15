@@ -15,7 +15,6 @@ import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
-import org.json.JSONObject;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -52,10 +51,10 @@ public class HttpTransportTest {
 
   @Test
   public void testRetryEvents() throws AmplitudeInvalidAPIKeyException, InterruptedException {
-    Response successResponse = getSuccessResponse();
-    Response payloadTooLargeResponse = getPayloadTooLargeResponse();
-    Response invalidResponse = getInvalidResponse(false);
-    Response rateLimitResponse = getRateLimitResponse(false);
+    Response successResponse = ResponseUtil.getSuccessResponse();
+    Response payloadTooLargeResponse = ResponseUtil.getPayloadTooLargeResponse();
+    Response invalidResponse = ResponseUtil.getInvalidResponse(false);
+    Response rateLimitResponse = ResponseUtil.getRateLimitResponse(false);
 
     HttpCall httpCall = mock(HttpCall.class);
     CountDownLatch latch = new CountDownLatch(4);
@@ -107,8 +106,8 @@ public class HttpTransportTest {
   @Test
   public void testRetryEventsWithInvalidEvents()
       throws AmplitudeInvalidAPIKeyException, InterruptedException {
-    Response invalidResponse = getInvalidResponse(true);
-    Response successResponse = getSuccessResponse();
+    Response invalidResponse = ResponseUtil.getInvalidResponse(true);
+    Response successResponse = ResponseUtil.getSuccessResponse();
 
     HttpCall httpCall = mock(HttpCall.class);
     CountDownLatch latch = new CountDownLatch(1);
@@ -146,9 +145,9 @@ public class HttpTransportTest {
   @Test
   public void testRetryEventsWithInvalidFieldsDuringRetry()
       throws AmplitudeInvalidAPIKeyException, InterruptedException {
-    Response rateLimitResponse = getRateLimitResponse(false);
-    Response invalidResponse = getInvalidResponse(true);
-    Response successResponse = getSuccessResponse();
+    Response rateLimitResponse = ResponseUtil.getRateLimitResponse(false);
+    Response invalidResponse = ResponseUtil.getInvalidResponse(true);
+    Response successResponse = ResponseUtil.getSuccessResponse();
     HttpCall httpCall = mock(HttpCall.class);
     CountDownLatch latch = new CountDownLatch(2);
     when(httpCall.makeRequest(anyList()))
@@ -189,7 +188,7 @@ public class HttpTransportTest {
 
   @Test
   public void testRetryEventWithUserExceedQuota() {
-    Response rateLimitResponse = getRateLimitResponse(true);
+    Response rateLimitResponse = ResponseUtil.getRateLimitResponse(true);
     List<Event> events = EventsGenerator.generateEvents(10);
     Map<Event, Integer> resultMap = new HashMap<>();
     AmplitudeCallbacks callbacks =
@@ -209,9 +208,9 @@ public class HttpTransportTest {
   @Test
   public void testRetryEventWithUserExceedQuotaDuringRetry()
       throws AmplitudeInvalidAPIKeyException, InterruptedException {
-    Response invalidResponse = getInvalidResponse(false);
-    Response rateLimitResponse = getRateLimitResponse(true);
-    Response successResponse = getSuccessResponse();
+    Response invalidResponse = ResponseUtil.getInvalidResponse(false);
+    Response rateLimitResponse = ResponseUtil.getRateLimitResponse(true);
+    Response successResponse = ResponseUtil.getSuccessResponse();
     HttpCall httpCall = mock(HttpCall.class);
     CountDownLatch latch = new CountDownLatch(1);
     when(httpCall.makeRequest(anyList()))
@@ -238,51 +237,5 @@ public class HttpTransportTest {
     for (int i = 0; i < events.size(); i++) {
       assertEquals(429, resultMap.get(events.get(i)));
     }
-  }
-
-  private Response getInvalidResponse(boolean withInvalidRequestBody) {
-    Response invalidResponse = new Response();
-    invalidResponse.status = Status.INVALID;
-    invalidResponse.code = 400;
-    if (withInvalidRequestBody) {
-      invalidResponse.invalidRequestBody = new JSONObject();
-      JSONObject eventsWithInvalidFields = new JSONObject();
-      eventsWithInvalidFields.put("time", Arrays.asList(2, 3, 8));
-      invalidResponse.invalidRequestBody.put("eventsWithInvalidFields", eventsWithInvalidFields);
-      JSONObject eventsWithMissingFields = new JSONObject();
-      eventsWithMissingFields.put("event_type", Arrays.asList(3, 4, 7));
-      invalidResponse.invalidRequestBody.put("eventsWithMissingFields", eventsWithMissingFields);
-    }
-    return invalidResponse;
-  }
-
-  private Response getPayloadTooLargeResponse() {
-    Response payloadTooLargeResponse = new Response();
-    payloadTooLargeResponse.status = Status.PAYLOAD_TOO_LARGE;
-    payloadTooLargeResponse.code = 413;
-    return payloadTooLargeResponse;
-  }
-
-  private Response getSuccessResponse() {
-    Response successResponse = new Response();
-    successResponse.status = Status.SUCCESS;
-    successResponse.code = 200;
-    return successResponse;
-  }
-
-  private Response getRateLimitResponse(boolean withExceedQuota) {
-    Response rateLimitResponse = new Response();
-    rateLimitResponse.status = Status.RATELIMIT;
-    rateLimitResponse.code = 429;
-    if (withExceedQuota) {
-      rateLimitResponse.rateLimitBody = new JSONObject();
-      JSONObject exceededDailyQuotaUsers = new JSONObject();
-      exceededDailyQuotaUsers.put("test-user-id-0", true);
-      rateLimitResponse.rateLimitBody.put("exceededDailyQuotaUsers", exceededDailyQuotaUsers);
-      JSONObject exceededDailyQuotaDevices = new JSONObject();
-      exceededDailyQuotaDevices.put("test-device", true);
-      rateLimitResponse.rateLimitBody.put("exceededDailyQuotaDevices", exceededDailyQuotaDevices);
-    }
-    return rateLimitResponse;
   }
 }
