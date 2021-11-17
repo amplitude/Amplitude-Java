@@ -149,6 +149,7 @@ class HttpTransport {
                         numEventsRemoved += 1;
                       }
                     }
+                    triggerEventCallbacks(eventsToDrop, retryResult.statusCode, "Invalid events.");
                     eventCount -= numEventsRemoved;
                     eventsInRetry.addAndGet(-numEventsRemoved);
                   }
