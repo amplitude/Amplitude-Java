@@ -188,10 +188,8 @@ public class AmplitudeMultiThreadTest {
     }
 
     public void blockWithTimeout(int timeoutInSecond) throws InterruptedException {
-      System.out.println("Begin blocking call with timeout");
       int timeout = Math.max(timeoutInSecond, 15);
       this.latch.await(timeout, TimeUnit.SECONDS);
-      System.out.println("Finished blocking call with timeout");
     }
   }
 

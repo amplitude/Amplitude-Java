@@ -13,12 +13,20 @@ class EventsRetryResult {
   protected boolean shouldRetry;
   protected boolean shouldReduceEventCount;
   protected int[] eventIndicesToRemove;
+  protected int statusCode;
+  protected String errorMessage;
 
   protected EventsRetryResult(
-      boolean shouldRetry, boolean shouldReduceEventCount, int[] eventIndicesToRemove) {
+      boolean shouldRetry,
+      boolean shouldReduceEventCount,
+      int[] eventIndicesToRemove,
+      int statusCode,
+      String errorMessage) {
     this.shouldRetry = shouldRetry;
     this.shouldReduceEventCount = shouldReduceEventCount;
     this.eventIndicesToRemove = eventIndicesToRemove;
+    this.statusCode = statusCode;
+    this.errorMessage = errorMessage;
   }
 }
 
@@ -141,23 +149,27 @@ class HttpTransport {
                         numEventsRemoved += 1;
                       }
                     }
-                    triggerEventCallbacks(eventsToDrop, 400, "Invalid events.");
                     eventCount -= numEventsRemoved;
                     eventsInRetry.addAndGet(-numEventsRemoved);
                   }
                   if (!shouldRetry || eventCount < 1) {
                     break;
                   }
-                  if (shouldReduceEventCount) {
-                    if (!isLastTry) {
-                      triggerEventCallbacks(
-                          eventsBuffer.subList(eventCount / 2, eventCount),
-                          413,
-                          "Event dropped for retry");
-                      eventCount /= 2;
-                    } else {
-                      triggerEventCallbacks(eventsBuffer, 413, "Event retries exhausted.");
-                    }
+                  if (shouldReduceEventCount && !isLastTry) {
+                    triggerEventCallbacks(
+                        eventsBuffer.subList(eventCount / 2, eventCount),
+                        retryResult.statusCode,
+                        "Event dropped for retry");
+                    eventCount /= 2;
+                  }
+                  if (isLastTry) {
+                    triggerEventCallbacks(
+                        eventsBuffer.subList(0, eventCount),
+                        retryResult.statusCode,
+                        "Event retries exhausted.");
+                  }
+                  if (eventCount == 0) {
+                    break;
                   }
                 } catch (InterruptedException | AmplitudeInvalidAPIKeyException e) {
                   // The retry logic should only be executed after the API key checking passed.
@@ -204,7 +216,8 @@ class HttpTransport {
       default:
         break;
     }
-    return new EventsRetryResult(shouldRetry, shouldReduceEventCount, eventIndicesToRemove);
+    return new EventsRetryResult(
+        shouldRetry, shouldReduceEventCount, eventIndicesToRemove, response.code, response.error);
   }
 
   private List<Event> getEventListToRetry(List<Event> events, Response response) {
@@ -250,11 +263,6 @@ class HttpTransport {
     return eventsToRetry;
   }
 
-  // Helper method to get event list from idToBuffer
-  private Queue<Event> getRetryBuffer(String userId, String deviceId) {
-    return (idToBuffer.get(userId) != null) ? idToBuffer.get(userId).get(deviceId) : null;
-  }
-
   private List<Event> pruneEvent(List<Event> events) {
     List<Event> prunedEvents = new ArrayList<>();
     // If we already have the key value pair for the current event in idToBuffer,
@@ -264,13 +272,26 @@ class HttpTransport {
       String userId = event.userId;
       String deviceId = event.deviceId;
       if ((userId != null && userId.length() > 0) || (deviceId != null && deviceId.length() > 0)) {
-        Queue<Event> currentBuffer = getRetryBuffer(userId, deviceId);
-        if (currentBuffer != null) {
-          currentBuffer.add(event);
-          eventsInRetry.incrementAndGet();
-        } else {
-          prunedEvents.add(event);
-        }
+        idToBuffer.compute(
+            userId,
+            (key, value) -> {
+              if (value == null) {
+                prunedEvents.add(event);
+                return null;
+              }
+              value.compute(
+                  deviceId,
+                  (deviceKey, deviceValue) -> {
+                    if (deviceValue == null) {
+                      prunedEvents.add(event);
+                      return null;
+                    }
+                    deviceValue.add(event);
+                    eventsInRetry.incrementAndGet();
+                    return deviceValue;
+                  });
+              return value;
+            });
       }
     }
     return prunedEvents;
