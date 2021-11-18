@@ -6,25 +6,33 @@ import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 
 class EventsRetryResult {
   protected boolean shouldRetry;
   protected boolean shouldReduceEventCount;
   protected int[] eventIndicesToRemove;
+  protected int statusCode;
+  protected String errorMessage;
 
   protected EventsRetryResult(
-      boolean shouldRetry, boolean shouldReduceEventCount, int[] eventIndicesToRemove) {
+      boolean shouldRetry,
+      boolean shouldReduceEventCount,
+      int[] eventIndicesToRemove,
+      int statusCode,
+      String errorMessage) {
     this.shouldRetry = shouldRetry;
     this.shouldReduceEventCount = shouldReduceEventCount;
     this.eventIndicesToRemove = eventIndicesToRemove;
+    this.statusCode = statusCode;
+    this.errorMessage = errorMessage;
   }
 }
 
 class HttpTransport {
   // Use map to record the events are currently in retry queue.
-  private Map<String, Map<String, List<Event>>> idToBuffer =
-      new ConcurrentHashMap<String, Map<String, List<Event>>>();
+  private Map<String, Map<String, Queue<Event>>> idToBuffer = new ConcurrentHashMap<>();
   private AtomicInteger eventsInRetry = new AtomicInteger(0);
 
   private HttpCall httpCall;
@@ -95,18 +103,7 @@ class HttpTransport {
       String userId = (event.userId != null) ? event.userId : "";
       String deviceId = (event.deviceId != null) ? event.deviceId : "";
       if (userId.length() > 0 || deviceId.length() > 0) {
-        Map<String, List<Event>> deviceToBufferMap = idToBuffer.get(userId);
-        if (deviceToBufferMap == null) {
-          deviceToBufferMap = new ConcurrentHashMap<>();
-          idToBuffer.put(userId, deviceToBufferMap);
-        }
-        List<Event> retryBuffer = deviceToBufferMap.get(deviceId);
-        if (retryBuffer == null) {
-          retryBuffer = new ArrayList<>();
-          deviceToBufferMap.put(deviceId, retryBuffer);
-        }
-        eventsInRetry.incrementAndGet();
-        retryBuffer.add(event);
+        addEventToBuffer(userId, deviceId, event);
         userToDevices.computeIfAbsent(userId, key -> new HashSet<>()).add(deviceId);
       }
     }
@@ -123,12 +120,12 @@ class HttpTransport {
     Thread retryThread =
         new Thread(
             () -> {
-              List<Event> eventsBuffer =
-                  (idToBuffer.get(userId) != null) ? idToBuffer.get(userId).remove(deviceId) : null;
-              if (eventsBuffer == null || eventsBuffer.size() == 0) {
+              Queue<Event> eventsQueue = getEventsFromBuffer(userId, deviceId);
+              if (eventsQueue == null || eventsQueue.size() == 0) {
                 cleanUpBuffer(userId);
                 return;
               }
+              List<Event> eventsBuffer = new ArrayList<>(eventsQueue);
               int retryTimes = Constants.RETRY_TIMEOUTS.length;
               int eventCount = eventsBuffer.size();
               for (int numRetries = 0; numRetries < retryTimes; numRetries++) {
@@ -152,23 +149,28 @@ class HttpTransport {
                         numEventsRemoved += 1;
                       }
                     }
-                    triggerEventCallbacks(eventsToDrop, 400, "Invalid events.");
+                    triggerEventCallbacks(eventsToDrop, retryResult.statusCode, "Invalid events.");
                     eventCount -= numEventsRemoved;
                     eventsInRetry.addAndGet(-numEventsRemoved);
                   }
                   if (!shouldRetry || eventCount < 1) {
                     break;
                   }
-                  if (shouldReduceEventCount) {
-                    if (!isLastTry) {
-                      eventCount /= 2;
-                      triggerEventCallbacks(
-                          eventsBuffer.subList(eventCount, eventsBuffer.size()),
-                          413,
-                          "Event dropper for retry");
-                    } else {
-                      triggerEventCallbacks(eventsBuffer, 413, "Event retries exhausted.");
-                    }
+                  if (shouldReduceEventCount && !isLastTry) {
+                    triggerEventCallbacks(
+                        eventsBuffer.subList(eventCount / 2, eventCount),
+                        retryResult.statusCode,
+                        "Event dropped for retry");
+                    eventCount /= 2;
+                  }
+                  if (isLastTry) {
+                    triggerEventCallbacks(
+                        eventsBuffer.subList(0, eventCount),
+                        retryResult.statusCode,
+                        "Event retries exhausted.");
+                  }
+                  if (eventCount == 0) {
+                    break;
                   }
                 } catch (InterruptedException | AmplitudeInvalidAPIKeyException e) {
                   // The retry logic should only be executed after the API key checking passed.
@@ -215,7 +217,8 @@ class HttpTransport {
       default:
         break;
     }
-    return new EventsRetryResult(shouldRetry, shouldReduceEventCount, eventIndicesToRemove);
+    return new EventsRetryResult(
+        shouldRetry, shouldReduceEventCount, eventIndicesToRemove, response.code, response.error);
   }
 
   private List<Event> getEventListToRetry(List<Event> events, Response response) {
@@ -231,7 +234,7 @@ class HttpTransport {
           || events.size() == 1) {
         // Return early if there's an issue with the entire payload
         // or if there's only one event and its invalid
-        triggerEventCallbacks(eventsToDrop, response.code, response.error);
+        triggerEventCallbacks(events, response.code, response.error);
         return new ArrayList<>();
       } else if (response.invalidRequestBody != null) {
         // Filter out invalid events id  vv v
@@ -261,11 +264,6 @@ class HttpTransport {
     return eventsToRetry;
   }
 
-  // Helper method to get event list from idToBuffer
-  private List<Event> getRetryBuffer(String userId, String deviceId) {
-    return (idToBuffer.get(userId) != null) ? idToBuffer.get(userId).get(deviceId) : null;
-  }
-
   private List<Event> pruneEvent(List<Event> events) {
     List<Event> prunedEvents = new ArrayList<>();
     // If we already have the key value pair for the current event in idToBuffer,
@@ -275,13 +273,26 @@ class HttpTransport {
       String userId = event.userId;
       String deviceId = event.deviceId;
       if ((userId != null && userId.length() > 0) || (deviceId != null && deviceId.length() > 0)) {
-        List<Event> currentBuffer = getRetryBuffer(userId, deviceId);
-        if (currentBuffer != null) {
-          currentBuffer.add(event);
-          eventsInRetry.incrementAndGet();
-        } else {
-          prunedEvents.add(event);
-        }
+        idToBuffer.compute(
+            userId,
+            (key, value) -> {
+              if (value == null) {
+                prunedEvents.add(event);
+                return null;
+              }
+              value.compute(
+                  deviceId,
+                  (deviceKey, deviceValue) -> {
+                    if (deviceValue == null) {
+                      prunedEvents.add(event);
+                      return null;
+                    }
+                    deviceValue.add(event);
+                    eventsInRetry.incrementAndGet();
+                    return deviceValue;
+                  });
+              return value;
+            });
       }
     }
     return prunedEvents;
@@ -289,13 +300,8 @@ class HttpTransport {
 
   // Cleans up the id in the buffer map if the job is done
   private void cleanUpBuffer(String userId) {
-    Map<String, List<Event>> deviceToBufferMap = idToBuffer.get(userId);
-    if (deviceToBufferMap == null) {
-      return;
-    }
-    if (deviceToBufferMap.size() == 0) {
-      idToBuffer.remove(userId);
-    }
+    idToBuffer.computeIfPresent(
+        userId, (key, value) -> value == null || value.isEmpty() ? null : value);
   }
 
   protected boolean shouldRetryForStatus(Status status) {
@@ -308,9 +314,49 @@ class HttpTransport {
     if (callbacks == null || events == null || events.isEmpty()) {
       return;
     }
-
     for (Event event : events) {
       callbacks.onLogEventServerResponse(event, status, message);
     }
+  }
+
+  private void addEventToBuffer(String userId, String deviceId, Event event) {
+    idToBuffer.compute(
+        userId,
+        (key, value) -> {
+          if (value == null) {
+            value = new ConcurrentHashMap<>();
+          }
+          value.compute(
+              deviceId,
+              (deviceKey, deviceValue) -> {
+                if (deviceValue == null) {
+                  deviceValue = new ConcurrentLinkedQueue<>();
+                }
+                deviceValue.add(event);
+                return deviceValue;
+              });
+          return value;
+        });
+  }
+
+  private Queue<Event> getEventsFromBuffer(String userId, String deviceId) {
+    List<Queue<Event>> eventQueues = new ArrayList<>();
+    idToBuffer.compute(
+        userId,
+        (key, value) -> {
+          if (value == null) {
+            return null;
+          }
+          value.compute(
+              deviceId,
+              (deviceKey, deviceValue) -> {
+                if (deviceValue != null) {
+                  eventQueues.add(deviceValue);
+                }
+                return null;
+              });
+          return value;
+        });
+    return eventQueues.isEmpty() ? null : eventQueues.get(0);
   }
 }

@@ -96,6 +96,7 @@ public class Amplitude {
 
   /**
    * Set event callback which are triggered after event sent
+   *
    * @param callbacks AmplitudeCallbacks or null to clean up.
    */
   public void setCallbacks(AmplitudeCallbacks callbacks) {
@@ -107,7 +108,7 @@ public class Amplitude {
    *
    * @param event The event to be sent
    */
-  public void logEvent(Event event) {
+  public synchronized void logEvent(Event event) {
     eventsToSend.add(event);
     if (eventsToSend.size() >= Constants.EVENT_BUF_COUNT) {
       flushEvents();
