@@ -1,5 +1,7 @@
 package com.amplitude;
 
+import org.json.JSONObject;
+
 import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
@@ -16,6 +18,11 @@ public class Amplitude {
   private HttpCallMode httpCallMode;
   private HttpCall httpCall;
   private HttpTransport httpTransport;
+
+  /**
+   * A dictionary of key-value pairs that represent additional instructions for server save operation.
+   */
+  private JSONObject options;
 
   /**
    * Private internal constructor for Amplitude. Please use `getInstance(String name)` or
@@ -72,6 +79,13 @@ public class Amplitude {
     boolean isValidServerUrl = url.startsWith("http://") || url.startsWith("https://");
     if (!isValidServerUrl) return;
     serverUrl = url;
+    updateHttpCall(httpCallMode);
+  }
+
+  public void addOption(String key, Object value) {
+    if(options == null) options = new JSONObject();
+
+    options.put(key, value);
     updateHttpCall(httpCallMode);
   }
 
@@ -132,9 +146,9 @@ public class Amplitude {
   private void updateHttpCall(HttpCallMode updatedHttpCallMode) {
     httpCallMode = updatedHttpCallMode;
     if (updatedHttpCallMode == HttpCallMode.BATCH) {
-      httpCall = new HttpCall(apiKey, serverUrl != null ? serverUrl : Constants.BATCH_API_URL);
+      httpCall = new HttpCall(apiKey, serverUrl != null ? serverUrl : Constants.BATCH_API_URL, options);
     } else {
-      httpCall = new HttpCall(apiKey, serverUrl != null ? serverUrl : Constants.API_URL);
+      httpCall = new HttpCall(apiKey, serverUrl != null ? serverUrl : Constants.API_URL, options);
     }
     httpTransport.setHttpCall(httpCall);
   }

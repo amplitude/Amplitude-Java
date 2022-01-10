@@ -14,10 +14,12 @@ import java.util.List;
 public class HttpCall {
   private final String apiKey;
   private final String serverUrl;
+  private final JSONObject options;
 
-  protected HttpCall(String apiKey, String serverUrl) {
+  protected HttpCall(String apiKey, String serverUrl, JSONObject options) {
     this.apiKey = apiKey;
     this.serverUrl = serverUrl;
+    this.options = options;
   }
 
   protected String getApiUrl() {
@@ -41,6 +43,7 @@ public class HttpCall {
 
       JSONObject bodyJson = new JSONObject();
       bodyJson.put("api_key", this.apiKey);
+      if(options != null) bodyJson.put("options", options);
 
       JSONArray eventsArr = new JSONArray();
       for (int i = 0; i < events.size(); i++) {
