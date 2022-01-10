@@ -109,11 +109,6 @@ public class Event {
    * not exceed 40 layers.
    */
   public JSONObject userProperties;
-  
-  /**
-   * A dictionary of key-value pairs that represent additional instructions for server save operation.
-   */
-  public JSONObject options;
 
   /**
    * The price of the item purchased. Required for revenue data if the revenue field is not sent.
@@ -244,10 +239,6 @@ public class Event {
       event.put(
           "user_properties",
           (userProperties == null) ? new JSONObject() : truncate(userProperties));
-      
-      event.put(
-              "options",
-              options == null ? new JSONObject() : truncate(options));
 
       boolean shouldLogRevenueProps = (revenue != null || price != null);
       if (shouldLogRevenueProps) {
