@@ -54,6 +54,12 @@ class HttpTransport {
                 retryEvents(events, response);
               } else if (status == Status.SUCCESS) {
                 triggerEventCallbacks(events, response.code, "Event sent success.");
+              } else if (status == Status.FAILED) {
+                  triggerEventCallbacks(events, response.code, "Event sent Failed.");
+              } else if (status == Status.TIMEOUT) {
+                  triggerEventCallbacks(events, response.code, "Event sent Timeout.");
+              } else {
+                  triggerEventCallbacks(events, response.code, "Unknown response status.");
               }
             })
         .exceptionally(
