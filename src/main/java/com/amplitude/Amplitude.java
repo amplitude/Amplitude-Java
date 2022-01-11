@@ -82,10 +82,8 @@ public class Amplitude {
     updateHttpCall(httpCallMode);
   }
 
-  public void addOption(String key, Object value) {
-    if(options == null) options = new JSONObject();
-
-    options.put(key, value);
+  public void setOptions(JSONObject options) {
+    this.options = options;
     updateHttpCall(httpCallMode);
   }
 
