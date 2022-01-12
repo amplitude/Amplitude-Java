@@ -56,9 +56,7 @@ class HttpTransport {
                 triggerEventCallbacks(events, response.code, "Event sent success.");
               } else if (status == Status.FAILED) {
                   triggerEventCallbacks(events, response.code, "Event sent Failed.");
-              } else if (status == Status.TIMEOUT) {
-                  triggerEventCallbacks(events, response.code, "Event sent Timeout.");
-              } else {
+              }  else {
                   triggerEventCallbacks(events, response.code, "Unknown response status.");
               }
             })
@@ -313,7 +311,8 @@ class HttpTransport {
   protected boolean shouldRetryForStatus(Status status) {
     return (status == Status.INVALID
         || status == Status.PAYLOAD_TOO_LARGE
-        || status == Status.RATELIMIT);
+        || status == Status.RATELIMIT
+        || status == Status.TIMEOUT);
   }
 
   private void triggerEventCallbacks(List<Event> events, int status, String message) {
