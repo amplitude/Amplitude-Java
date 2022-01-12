@@ -41,7 +41,7 @@ public class HttpTransportTest {
     "INVALID, true",
     "RATELIMIT, true",
     "PAYLOAD_TOO_LARGE, true",
-    "TIMEOUT, false",
+    "TIMEOUT, true",
     "FAILED, false",
     "UNKNOWN, false"
   })
