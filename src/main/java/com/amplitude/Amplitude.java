@@ -82,7 +82,7 @@ public class Amplitude {
     updateHttpCall(httpCallMode);
   }
 
-  public void setOptions(JSONObject options) {
+  public void setOptions(Options options) {
     this.options = options;
     updateHttpCall(httpCallMode);
   }
@@ -144,9 +144,9 @@ public class Amplitude {
   private void updateHttpCall(HttpCallMode updatedHttpCallMode) {
     httpCallMode = updatedHttpCallMode;
     if (updatedHttpCallMode == HttpCallMode.BATCH) {
-      httpCall = new HttpCall(apiKey, serverUrl != null ? serverUrl : Constants.BATCH_API_URL, options);
+      httpCall = new HttpCall(apiKey, serverUrl != null ? serverUrl : Constants.BATCH_API_URL, options.toJsonObject());
     } else {
-      httpCall = new HttpCall(apiKey, serverUrl != null ? serverUrl : Constants.API_URL, options);
+      httpCall = new HttpCall(apiKey, serverUrl != null ? serverUrl : Constants.API_URL, options.toJsonObject());
     }
     httpTransport.setHttpCall(httpCall);
   }
