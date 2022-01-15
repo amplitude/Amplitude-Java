@@ -1,7 +1,6 @@
 package com.amplitude;
 
 import com.amplitude.exception.AmplitudeInvalidAPIKeyException;
-
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -14,9 +13,9 @@ import java.util.List;
 public class HttpCall {
   private final String apiKey;
   private final String serverUrl;
-  private final JSONObject options;
+  private final Options options;
 
-  protected HttpCall(String apiKey, String serverUrl, JSONObject options) {
+  protected HttpCall(String apiKey, String serverUrl, Options options) {
     this.apiKey = apiKey;
     this.serverUrl = serverUrl;
     this.options = options;
@@ -43,7 +42,7 @@ public class HttpCall {
 
       JSONObject bodyJson = new JSONObject();
       bodyJson.put("api_key", this.apiKey);
-      if(options != null) bodyJson.put("options", options);
+      if(options != null) bodyJson.put("options", options.toJsonObject());
 
       JSONArray eventsArr = new JSONArray();
       for (int i = 0; i < events.size(); i++) {
