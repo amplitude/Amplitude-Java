@@ -228,7 +228,7 @@ public class HttpCallTest {
   }
 
   private HttpCall getHttpCallFromCallMode(HttpCallMode httpCallMode) {
-    return new HttpCall(apiKey, httpCallMode == HttpCallMode.BATCH ? Constants.BATCH_API_URL : Constants.API_URL);
+    return new HttpCall(apiKey, httpCallMode == HttpCallMode.BATCH ? Constants.BATCH_API_URL : Constants.API_URL, null);
   }
 
   private void verifyConnectionOption(HttpsURLConnection connection) throws ProtocolException {
