@@ -22,7 +22,7 @@ public class Amplitude {
   /**
    * A dictionary of key-value pairs that represent additional instructions for server save operation.
    */
-  private JSONObject options;
+  private Options options;
 
   /**
    * Private internal constructor for Amplitude. Please use `getInstance(String name)` or
