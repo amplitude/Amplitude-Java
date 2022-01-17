@@ -311,11 +311,14 @@ class HttpTransport {
   }
 
   private void triggerEventCallbacks(List<Event> events, int status, String message) {
-    if (callbacks == null || events == null || events.isEmpty()) {
+    if (events == null || events.isEmpty()) {
       return;
     }
     for (Event event : events) {
-      callbacks.onLogEventServerResponse(event, status, message);
+      AmplitudeCallbacks eventCallback = event.callback != null ? event.callback : callbacks;
+      if (eventCallback != null) {
+        eventCallback.onLogEventServerResponse(event, status, message);
+      }
     }
   }
 
