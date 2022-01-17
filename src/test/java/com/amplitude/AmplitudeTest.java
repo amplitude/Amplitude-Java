@@ -13,6 +13,7 @@ import java.lang.reflect.Field;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.anyList;
@@ -201,6 +202,50 @@ public class AmplitudeTest {
         };
     amplitude.setCallbacks(callbacks);
     assertEquals(callbacks, getCallbacks(amplitude));
+  }
+
+  @Test
+  public void testLogEventWithCallbacks()
+      throws InterruptedException, NoSuchFieldException, IllegalAccessException,
+          AmplitudeInvalidAPIKeyException {
+    Amplitude amplitude = Amplitude.getInstance("test");
+    amplitude.init(apiKey);
+    List<Event> events = EventsGenerator.generateEvents(10, 5, 6);
+    HttpCall httpCall = getMockHttpCall(amplitude, false);
+    Response successResponse = ResponseUtil.getSuccessResponse();
+    CountDownLatch latch = new CountDownLatch(1);
+    when(httpCall.makeRequest(anyList()))
+        .thenAnswer(
+            invocation -> {
+              latch.countDown();
+              return successResponse;
+            });
+    AtomicInteger callbackCount1 = new AtomicInteger(0);
+    AtomicInteger callbackCount2 = new AtomicInteger(0);
+    AmplitudeCallbacks callbacks1 =
+        new AmplitudeCallbacks() {
+          @Override
+          public void onLogEventServerResponse(Event event, int status, String message) {
+            assertEquals(200, status);
+            callbackCount1.incrementAndGet();
+          }
+        };
+    AmplitudeCallbacks callbacks2 =
+        new AmplitudeCallbacks() {
+          @Override
+          public void onLogEventServerResponse(Event event, int status, String message) {
+            assertEquals(200, status);
+            callbackCount2.incrementAndGet();
+          }
+        };
+    for (int i = 0; i < events.size(); i++) {
+      AmplitudeCallbacks callbackForEvent = i % 2 == 0 ? callbacks1 : callbacks2;
+      amplitude.logEvent(events.get(i), callbackForEvent);
+    }
+    assertTrue(latch.await(1L, TimeUnit.SECONDS));
+    verify(httpCall, times(1)).makeRequest(anyList());
+    assertEquals(5, callbackCount1.get());
+    assertEquals(5, callbackCount2.get());
   }
 
   private HttpCall getMockHttpCall(Amplitude amplitude, boolean useBatch)

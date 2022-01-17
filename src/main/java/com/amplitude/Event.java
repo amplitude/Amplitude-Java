@@ -173,6 +173,11 @@ public class Event {
   public JSONObject groupProperties;
 
   /**
+   * Callback for Event
+   */
+  protected AmplitudeCallbacks callback;
+
+  /**
    * Create a new event with the required items. `eventType` is required, and at least one of
    * `userId` or `deviceId` is required. This method sets deviceId to null.
    *

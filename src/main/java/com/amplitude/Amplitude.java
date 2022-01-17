@@ -2,6 +2,7 @@ package com.amplitude;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.Future;
 
 public class Amplitude {
   private static Map<String, Amplitude> instances = new HashMap<>();
@@ -145,6 +146,19 @@ public class Amplitude {
    * @param event The event to be sent
    */
   public synchronized void logEvent(Event event) {
+    logEvent(event, null);
+  }
+
+  /**
+   * Log an event and set a callback for this event.
+   *
+   * @param event The event to be sent
+   * @param callbacks The callback for the event, this will override the event for client level callback
+   */
+  public synchronized void logEvent(Event event, AmplitudeCallbacks callbacks) {
+    if (callbacks != null) {
+      event.callback = callbacks;
+    }
     eventsToSend.add(event);
     if (eventsToSend.size() >= this.eventUploadThreshold) {
       flushEvents();
