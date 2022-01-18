@@ -15,6 +15,10 @@ public class HttpCall {
   private final String serverUrl;
   private final Options options;
 
+  protected HttpCall(String apiKey, String serverUrl) {
+    this(apiKey, serverUrl, null);
+  }
+
   protected HttpCall(String apiKey, String serverUrl, Options options) {
     this.apiKey = apiKey;
     this.serverUrl = serverUrl;
