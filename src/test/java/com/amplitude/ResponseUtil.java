@@ -58,4 +58,18 @@ class ResponseUtil {
     timeoutResponse.code = 408;
     return timeoutResponse;
   }
+
+  public static Response getFailedResponse() {
+    Response failedResponse = new Response();
+    failedResponse.status = Status.FAILED;
+    failedResponse.code = 500;
+    return failedResponse;
+  }
+
+  public static Response getUnknownResponse() {
+    Response unknownResponse = new Response();
+    unknownResponse.status = Status.UNKNOWN;
+    unknownResponse.code = 0;
+    return unknownResponse;
+  }
 }
