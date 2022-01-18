@@ -1,6 +1,7 @@
 package com.amplitude;
 
 import java.util.Arrays;
+import java.util.ResourceBundle;
 
 import org.json.JSONObject;
 
@@ -49,5 +50,12 @@ class ResponseUtil {
       rateLimitResponse.rateLimitBody.put("exceededDailyQuotaDevices", exceededDailyQuotaDevices);
     }
     return rateLimitResponse;
+  }
+
+  public static Response getTimeoutResponse() {
+    Response timeoutResponse = new Response();
+    timeoutResponse.status = Status.TIMEOUT;
+    timeoutResponse.code = 408;
+    return timeoutResponse;
   }
 }

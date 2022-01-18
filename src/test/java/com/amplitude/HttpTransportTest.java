@@ -238,4 +238,42 @@ public class HttpTransportTest {
       assertEquals(429, resultMap.get(events.get(i)));
     }
   }
+
+    @Test
+    public void testRetryEventWithTimeout()
+            throws AmplitudeInvalidAPIKeyException, InterruptedException {
+        Response timeoutResponse = ResponseUtil.getTimeoutResponse();
+        Response successResponse = ResponseUtil.getSuccessResponse();
+        HttpCall httpCall = mock(HttpCall.class);
+        CountDownLatch latch = new CountDownLatch(2);
+        when(httpCall.makeRequest(anyList()))
+        .thenAnswer(
+                invocation -> {
+                    latch.countDown();
+                    return timeoutResponse;
+                })
+        .thenAnswer(
+                invocation -> {
+                    latch.countDown();
+                    return successResponse;
+                });
+
+        List<Event> events = EventsGenerator.generateEvents(10);
+        Map<Event, Integer> resultMap = new HashMap<>();
+        AmplitudeCallbacks callbacks =
+                new AmplitudeCallbacks() {
+                    @Override
+                    public void onLogEventServerResponse(Event event, int status, String message) {
+                        resultMap.put(event, status);
+                    }
+                };
+        httpTransport.setHttpCall(httpCall);
+        httpTransport.setCallbacks(callbacks);
+        httpTransport.retryEvents(events, timeoutResponse);
+        assertTrue(latch.await(1L, TimeUnit.SECONDS));
+        verify(httpCall, times(2)).makeRequest(anyList());
+        for (int i = 0; i < events.size(); i++) {
+            assertEquals(200, resultMap.get(events.get(i)));
+        }
+    }
 }
