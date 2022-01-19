@@ -20,6 +20,11 @@ public class Amplitude {
   private int eventUploadPeriodMillis = Constants.EVENT_BUF_TIME_MILLIS;
 
   /**
+   * A dictionary of key-value pairs that represent additional instructions for server save operation.
+   */
+  private Options options;
+
+  /**
    * Private internal constructor for Amplitude. Please use `getInstance(String name)` or
    * `getInstance()` to get a new instance.
    */
@@ -74,6 +79,11 @@ public class Amplitude {
     boolean isValidServerUrl = url.startsWith("http://") || url.startsWith("https://");
     if (!isValidServerUrl) return;
     serverUrl = url;
+    updateHttpCall(httpCallMode);
+  }
+
+  public void setOptions(Options options) {
+    this.options = options;
     updateHttpCall(httpCallMode);
   }
 
@@ -157,10 +167,11 @@ public class Amplitude {
 
   private void updateHttpCall(HttpCallMode updatedHttpCallMode) {
     httpCallMode = updatedHttpCallMode;
+
     if (updatedHttpCallMode == HttpCallMode.BATCH) {
-      httpCall = new HttpCall(apiKey, serverUrl != null ? serverUrl : Constants.BATCH_API_URL);
+      httpCall = new HttpCall(apiKey, serverUrl != null ? serverUrl : Constants.BATCH_API_URL, options);
     } else {
-      httpCall = new HttpCall(apiKey, serverUrl != null ? serverUrl : Constants.API_URL);
+      httpCall = new HttpCall(apiKey, serverUrl != null ? serverUrl : Constants.API_URL, options);
     }
     httpTransport.setHttpCall(httpCall);
   }
