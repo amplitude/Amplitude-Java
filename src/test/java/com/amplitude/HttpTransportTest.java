@@ -245,12 +245,17 @@ public class HttpTransportTest {
         Response timeoutResponse = ResponseUtil.getTimeoutResponse();
         Response successResponse = ResponseUtil.getSuccessResponse();
         HttpCall httpCall = mock(HttpCall.class);
-        CountDownLatch latch = new CountDownLatch(1);
+        CountDownLatch latch = new CountDownLatch(2);
         when(httpCall.makeRequest(anyList()))
         .thenAnswer(
                 invocation -> {
                     latch.countDown();
                     return timeoutResponse;
+                })
+        .thenAnswer(
+                invocation -> {
+                    latch.countDown();
+                    return successResponse;
                 });
 
         List<Event> events = EventsGenerator.generateEvents(10);
@@ -266,9 +271,9 @@ public class HttpTransportTest {
         httpTransport.setCallbacks(callbacks);
         httpTransport.retryEvents(events, timeoutResponse);
         assertTrue(latch.await(1L, TimeUnit.SECONDS));
-        verify(httpCall, times(1)).makeRequest(anyList());
+        verify(httpCall, times(2)).makeRequest(anyList());
         for (int i = 0; i < events.size(); i++) {
-            assertEquals(408, resultMap.get(events.get(i)));
+            assertEquals(200, resultMap.get(events.get(i)));
         }
     }
 

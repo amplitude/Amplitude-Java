@@ -210,9 +210,6 @@ class HttpTransport {
       case PAYLOAD_TOO_LARGE:
         shouldRetry = true;
         break;
-      case TIMEOUT:
-          triggerEventCallbacks(events, response.code, response.error);
-        break;
       case INVALID:
         if (events.size() == 1) {
           shouldRetry = false;
