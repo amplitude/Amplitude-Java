@@ -44,12 +44,11 @@ public class AmplitudeTest {
     amplitude.init(apiKey);
     amplitude.useBatchMode(useBatch);
     amplitude.setLogMode(AmplitudeLog.LogMode.OFF);
+    amplitude.setEventUploadThreshold(5);
     List<Event> events = EventsGenerator.generateEvents(10, 5, 6);
     HttpCall httpCall = getMockHttpCall(amplitude, useBatch);
-    Response response = new Response();
-    response.code = 200;
-    response.status = Status.SUCCESS;
-    CountDownLatch latch = new CountDownLatch(1);
+    Response response = ResponseUtil.getSuccessResponse();
+    CountDownLatch latch = new CountDownLatch(2);
     when(httpCall.makeRequest(anyList()))
         .thenAnswer(
             invocation -> {
@@ -68,7 +67,7 @@ public class AmplitudeTest {
       amplitude.logEvent(event);
     }
     assertTrue(latch.await(1L, TimeUnit.SECONDS));
-    verify(httpCall, times(1)).makeRequest(anyList());
+    verify(httpCall, times(2)).makeRequest(anyList());
   }
 
   @ParameterizedTest
@@ -136,6 +135,31 @@ public class AmplitudeTest {
     httpCallField.setAccessible(true);
     HttpCall httpCall = (HttpCall) httpCallField.get(amplitude);
     assertEquals(httpCall.getApiUrl(), useBatch ? Constants.BATCH_API_URL : Constants.API_URL);
+  }
+
+  @Test
+  public void testSetEventUploadThreshold() throws NoSuchFieldException, IllegalAccessException {
+    Amplitude amplitude = Amplitude.getInstance("test");
+    amplitude.init(apiKey);
+    int updatedEventUploadThreshold = 5;
+    amplitude.setEventUploadThreshold(updatedEventUploadThreshold);
+    Field eventUploadThresholdField = amplitude.getClass().getDeclaredField("eventUploadThreshold");
+    eventUploadThresholdField.setAccessible(true);
+    int eventUploadThreshold = (Integer) eventUploadThresholdField.get(amplitude);
+    assertEquals(eventUploadThreshold, updatedEventUploadThreshold);
+  }
+
+  @Test
+  public void testSetEventUploadPeriodMillis() throws NoSuchFieldException, IllegalAccessException {
+    Amplitude amplitude = Amplitude.getInstance("test");
+    amplitude.init(apiKey);
+    int updatedEventUploadPeriodMillis = 20000;
+    amplitude.setEventUploadPeriodMillis(updatedEventUploadPeriodMillis);
+    Field eventUploadPeriodMillisdField =
+        amplitude.getClass().getDeclaredField("eventUploadPeriodMillis");
+    eventUploadPeriodMillisdField.setAccessible(true);
+    int eventUploadPeriodMillis = (Integer) eventUploadPeriodMillisdField.get(amplitude);
+    assertEquals(eventUploadPeriodMillis, updatedEventUploadPeriodMillis);
   }
 
   @Test

@@ -16,6 +16,8 @@ public class Amplitude {
   private HttpCallMode httpCallMode;
   private HttpCall httpCall;
   private HttpTransport httpTransport;
+  private int eventUploadThreshold = Constants.EVENT_BUF_COUNT;
+  private int eventUploadPeriodMillis = Constants.EVENT_BUF_TIME_MILLIS;
 
   /**
    * Private internal constructor for Amplitude. Please use `getInstance(String name)` or
@@ -95,6 +97,30 @@ public class Amplitude {
   }
 
   /**
+   * Sets event upload threshold. The SDK will attempt to batch upload unsent events
+   * every eventUploadPeriodMillis milliseconds, or if the unsent event count exceeds the
+   * event upload threshold.
+   *
+   * @param eventUploadThreshold the event upload threshold
+   */
+  public Amplitude setEventUploadThreshold(int eventUploadThreshold) {
+    this.eventUploadThreshold = eventUploadThreshold;
+    return this;
+  }
+
+  /**
+   * Sets event upload period millis. The SDK will attempt to batch upload unsent events * every
+   * eventUploadPeriodMillis milliseconds, or if the unsent event count exceeds the * event upload
+   * threshold.
+   *
+   * @param eventUploadPeriodMillis the event upload period millis
+   */
+  public Amplitude setEventUploadPeriodMillis(int eventUploadPeriodMillis) {
+    this.eventUploadPeriodMillis = eventUploadPeriodMillis;
+    return this;
+  }
+
+  /**
    * Set event callback which are triggered after event sent
    *
    * @param callbacks AmplitudeCallbacks or null to clean up.
@@ -110,7 +136,7 @@ public class Amplitude {
    */
   public synchronized void logEvent(Event event) {
     eventsToSend.add(event);
-    if (eventsToSend.size() >= Constants.EVENT_BUF_COUNT) {
+    if (eventsToSend.size() >= this.eventUploadThreshold) {
       flushEvents();
     } else {
       scheduleFlushEvents();
@@ -146,7 +172,7 @@ public class Amplitude {
           new Thread(
               () -> {
                 try {
-                  Thread.sleep(Constants.EVENT_BUF_TIME_MILLIS);
+                  Thread.sleep(this.eventUploadPeriodMillis);
                 } catch (InterruptedException e) {
 
                 }
