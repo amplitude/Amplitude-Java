@@ -315,9 +315,13 @@ class HttpTransport {
       return;
     }
     for (Event event : events) {
-      AmplitudeCallbacks eventCallback = event.callback != null ? event.callback : callbacks;
-      if (eventCallback != null) {
-        eventCallback.onLogEventServerResponse(event, status, message);
+      if (callbacks != null) {
+        // client level callback
+        callbacks.onLogEventServerResponse(event, status, message);
+      }
+      if (event.callback != null) {
+        // event level callback
+        event.callback.onLogEventServerResponse(event, status, message);
       }
     }
   }
