@@ -40,7 +40,7 @@ public class AmplitudeTest {
   public void testLogEventSuccess(boolean useBatch)
       throws InterruptedException, NoSuchFieldException, IllegalAccessException,
           AmplitudeInvalidAPIKeyException {
-    Amplitude amplitude = Amplitude.getInstance("test");
+    Amplitude amplitude = Amplitude.getInstance("testsuccess");
     amplitude.init(apiKey);
     amplitude.useBatchMode(useBatch);
     amplitude.setLogMode(AmplitudeLog.LogMode.OFF);
