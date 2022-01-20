@@ -27,6 +27,15 @@ public class DemoController {
         };
     amplitude.setCallbacks(callbacks);
     amplitude.logEvent(new Event("Test Event", "test_user_id"));
+    amplitude.logEvent(
+        new Event("Test Event with Callback", "test_user_id"),
+        new AmplitudeCallbacks() {
+          @Override
+          public void onLogEventServerResponse(Event event, int status, String message) {
+            System.out.println(
+                String.format("Event: %s sent with event callbacks", event.eventType));
+          }
+        });
     return "Amplitude Java SDK Demo: sending test event.";
   }
 }

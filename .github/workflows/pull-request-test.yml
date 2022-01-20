@@ -10,8 +10,8 @@ jobs:
         uses: actions/setup-java@v2
         with:
           java-version: '8'
-          distribution: 'adopt'
+          distribution: 'zulu'
       - uses: actions/checkout@v2
       - name: Test with Gradle
-        run: gradle test:test
+        run: gradle test:test --stacktrace
 

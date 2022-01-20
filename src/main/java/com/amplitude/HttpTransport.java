@@ -316,11 +316,18 @@ class HttpTransport {
   }
 
   private void triggerEventCallbacks(List<Event> events, int status, String message) {
-    if (callbacks == null || events == null || events.isEmpty()) {
+    if (events == null || events.isEmpty()) {
       return;
     }
     for (Event event : events) {
-      callbacks.onLogEventServerResponse(event, status, message);
+      if (callbacks != null) {
+        // client level callback
+        callbacks.onLogEventServerResponse(event, status, message);
+      }
+      if (event.callback != null) {
+        // event level callback
+        event.callback.onLogEventServerResponse(event, status, message);
+      }
     }
   }
 
