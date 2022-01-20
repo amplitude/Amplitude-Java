@@ -42,3 +42,5 @@ hs_err_pid*
 
 # Maven
 settings.xml
+
+.DS_Store
