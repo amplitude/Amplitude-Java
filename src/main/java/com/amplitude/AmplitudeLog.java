@@ -1,10 +1,22 @@
 package com.amplitude;
 
+import java.text.SimpleDateFormat;
+import java.util.Date;
+
 public class AmplitudeLog {
   private LogMode logMode = LogMode.ERROR;
+  private static SimpleDateFormat sdfDate = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
+
+  public static String getTimeStamp(){
+    return sdfDate.format(new Date());
+  }
 
   public void setLogMode(LogMode logMode) {
     this.logMode = logMode;
+  }
+
+  public LogMode getLogMode() {
+    return logMode;
   }
 
   public void log(String tag, String message) {

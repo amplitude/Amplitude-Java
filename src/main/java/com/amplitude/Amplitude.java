@@ -174,6 +174,7 @@ public class Amplitude {
     if (eventsToSend.size() > 0) {
       List<Event> eventsInTransit = new ArrayList<>(eventsToSend);
       eventsToSend.clear();
+      logger.log(logger.getTimeStamp(), eventsInTransit.size() + " events to flush");
       httpTransport.sendEventsWithRetry(eventsInTransit);
     }
   }
@@ -205,5 +206,17 @@ public class Amplitude {
               });
       flushThread.start();
     }
+  }
+
+  public void debug(String message) {
+    logger.log(logger.getTimeStamp(), message);
+  }
+
+  public void warn(String message) {
+    logger.warn(logger.getTimeStamp(), message);
+  }
+
+  public void error(String message) {
+    logger.error(logger.getTimeStamp(), message);
   }
 }

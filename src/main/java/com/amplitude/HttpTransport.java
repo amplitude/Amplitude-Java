@@ -89,6 +89,12 @@ class HttpTransport {
           Response response = null;
           try {
             response = httpCall.makeRequest(events);
+            if (logger.getLogMode() == AmplitudeLog.LogMode.DEBUG) {
+                StringBuilder debugMessage = new StringBuilder();
+                debugMessage.append("Sending ").append(events.size()).append(" events. Response status: ")
+                        .append(response.code).append(' ').append(response.status.name());
+                logger.log(logger.getTimeStamp(), debugMessage.toString());
+            }
           } catch (AmplitudeInvalidAPIKeyException e) {
             throw new CompletionException(e);
           }
@@ -191,6 +197,13 @@ class HttpTransport {
   private EventsRetryResult retryEventsOnce(String userId, String deviceId, List<Event> events)
       throws AmplitudeInvalidAPIKeyException {
     Response response = httpCall.makeRequest(events);
+      if (logger.getLogMode() == AmplitudeLog.LogMode.DEBUG) {
+          StringBuilder debugMessage = new StringBuilder();
+          debugMessage.append("Retry for userId ").append(userId).append(", deviceId ").append(deviceId)
+                  .append(". Events count: ").append(events.size()).append(". Response status: ").append(response.code)
+                  .append(' ').append(response.status.name());
+          logger.log(logger.getTimeStamp(), debugMessage.toString());
+      }
     boolean shouldRetry = true;
     boolean shouldReduceEventCount = false;
     int[] eventIndicesToRemove = new int[] {};
