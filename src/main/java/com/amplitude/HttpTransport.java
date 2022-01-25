@@ -90,10 +90,8 @@ class HttpTransport {
           try {
             response = httpCall.makeRequest(events);
             if (logger.getLogMode() == AmplitudeLog.LogMode.DEBUG) {
-                StringBuilder debugMessage = new StringBuilder();
-                debugMessage.append("Sending ").append(events.size()).append(" events. \n")
-                        .append(response.toString());
-                logger.log(logger.getTimeStamp(), debugMessage.toString());
+                String debugMessage = "Sending " + events.size() + " events. \n" + response.toString();
+                logger.log(logger.getTimeStamp(), debugMessage);
             }
           } catch (AmplitudeInvalidAPIKeyException e) {
             throw new CompletionException(e);
@@ -198,10 +196,9 @@ class HttpTransport {
       throws AmplitudeInvalidAPIKeyException {
     Response response = httpCall.makeRequest(events);
       if (logger.getLogMode() == AmplitudeLog.LogMode.DEBUG) {
-          StringBuilder debugMessage = new StringBuilder();
-          debugMessage.append("Retry for userId ").append(userId).append(", deviceId ").append(deviceId)
-                  .append(". Events count: ").append(events.size()).append(".\n").append(response.toString());
-          logger.log(logger.getTimeStamp(), debugMessage.toString());
+          String debugMessage = "Retry for userId " + userId + ", deviceId " + deviceId
+                  + ". Events count: " + events.size() + ".\n" + response.toString();
+          logger.log(logger.getTimeStamp(), debugMessage);
       }
     boolean shouldRetry = true;
     boolean shouldReduceEventCount = false;
