@@ -112,14 +112,18 @@ public class Response {
     JSONObject json = new JSONObject();
     json.put("code", this.code);
     json.put("status", this.status.name());
-    if (this.error != null)
+    if (this.error != null) {
       json.put("error", this.error);
-    if (this.successBody != null)
+    }
+    if (this.successBody != null) {
       json.put("successBody", this.successBody);
-    if (this.invalidRequestBody != null)
+    }
+    if (this.invalidRequestBody != null) {
       json.put("invalidRequestBody", this.invalidRequestBody);
-    if (this.rateLimitBody != null)
+    }
+    if (this.rateLimitBody != null) {
       json.put("rateLimitBody", this.rateLimitBody);
+    }
     return json.toString(4);
   }
 }
