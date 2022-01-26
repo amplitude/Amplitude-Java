@@ -89,6 +89,7 @@ class HttpTransport {
           Response response = null;
           try {
             response = httpCall.makeRequest(events);
+            logger.debug("SEND", events, response);
           } catch (AmplitudeInvalidAPIKeyException e) {
             throw new CompletionException(e);
           }
@@ -191,6 +192,7 @@ class HttpTransport {
   private EventsRetryResult retryEventsOnce(String userId, String deviceId, List<Event> events)
       throws AmplitudeInvalidAPIKeyException {
     Response response = httpCall.makeRequest(events);
+    logger.debug("RETRY", events, response);
     boolean shouldRetry = true;
     boolean shouldReduceEventCount = false;
     int[] eventIndicesToRemove = new int[] {};

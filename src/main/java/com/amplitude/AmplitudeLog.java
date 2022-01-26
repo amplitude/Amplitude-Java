@@ -1,13 +1,18 @@
 package com.amplitude;
 
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.List;
+
 public class AmplitudeLog {
   private LogMode logMode = LogMode.ERROR;
+  private static SimpleDateFormat sdfDate = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
 
   public void setLogMode(LogMode logMode) {
     this.logMode = logMode;
   }
 
-  public void log(String tag, String message) {
+  public void debug(String tag, String message) {
     log(tag, message, LogMode.DEBUG);
   }
 
@@ -17,6 +22,14 @@ public class AmplitudeLog {
 
   public void error(String tag, String message) {
     log(tag, message, LogMode.ERROR);
+  }
+
+  public void debug(String tag, List<Event> events, Response response) {
+    if (logMode == LogMode.DEBUG) {
+      String debugMessage = sdfDate.format(new Date()) + " " + tag + ": ";
+      debugMessage += "Events count " + events.size() + ".\n" + response.toString();
+      System.out.println(debugMessage);
+    }
   }
 
   public void log(String tag, String message, LogMode messageMode) {

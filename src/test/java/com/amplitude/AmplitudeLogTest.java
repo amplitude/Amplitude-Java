@@ -6,10 +6,13 @@ import static org.junit.jupiter.params.provider.Arguments.arguments;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.util.List;
 import java.util.stream.Stream;
 
+import com.amplitude.util.EventsGenerator;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -49,8 +52,17 @@ public class AmplitudeLogTest {
     assertEquals(expectedErrorLog, errContent.toString().trim());
     amplitudeLog.warn("Test", "warn message");
     assertEquals(expectedWarnLog, outContent.toString().trim());
-    amplitudeLog.log("Test", "debug message");
+    amplitudeLog.debug("Test", "debug message");
     assertEquals(expectedDebugLog, outContent.toString().trim());
+  }
+
+  @Test
+  public void testDebugWithEventsResponse() {
+    amplitudeLog.setLogMode(AmplitudeLog.LogMode.DEBUG);
+    List<Event> events = EventsGenerator.generateEvents(10);
+    Response response = ResponseUtil.getSuccessResponse();
+    amplitudeLog.debug("TEST", events, response);
+    assertEquals("TEST: Events count 10.\n{\n    \"code\": 200,\n    \"status\": \"SUCCESS\"\n}", outContent.toString().substring(23).trim());
   }
 
   static Stream<Arguments> logArguments() {
