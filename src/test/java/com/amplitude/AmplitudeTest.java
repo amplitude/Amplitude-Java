@@ -3,6 +3,8 @@ package com.amplitude;
 import com.amplitude.exception.AmplitudeInvalidAPIKeyException;
 import com.amplitude.util.EventsGenerator;
 
+import org.json.JSONException;
+import org.json.JSONObject;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -10,10 +12,11 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.lang.reflect.Field;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.anyList;
@@ -246,6 +249,90 @@ public class AmplitudeTest {
     verify(httpCall, times(1)).makeRequest(anyList());
     assertEquals(5, callbackCount1.get());
     assertEquals(5, callbackCount2.get());
+  }
+
+  @Test
+  public void testMiddlewareSupport()
+      throws NoSuchFieldException, IllegalAccessException, AmplitudeInvalidAPIKeyException, InterruptedException {
+    Amplitude amplitude = Amplitude.getInstance("testMiddlewareSupport");
+    amplitude.init(apiKey);
+    amplitude.useBatchMode(false);
+    amplitude.setEventUploadThreshold(1);
+    HttpCall httpCall = getMockHttpCall(amplitude, false);
+    Response response = ResponseUtil.getSuccessResponse();
+    CountDownLatch latch = new CountDownLatch(1);
+
+    AtomicReference<List<Event>> sentEvents = new AtomicReference<>();
+    when(httpCall.makeRequest(anyList()))
+        .thenAnswer(
+            invocation -> {
+              sentEvents.set(invocation.getArgument(0));
+              latch.countDown();
+              return response;
+            });
+
+    Map<String, Object> extraMap = new HashMap<>();
+    extraMap.put("description", "extra description");
+    MiddlewareExtra extra = new MiddlewareExtra(extraMap);
+    Middleware middleware = (payload, next) -> {
+      if (payload.event.eventProperties == null) {
+        payload.event.eventProperties = new JSONObject();
+      }
+      try {
+        payload.event.eventProperties.put("description", payload.extra.get("description"));
+      } catch (JSONException e) {
+        e.printStackTrace();
+      }
+
+      next.run(payload);
+    };
+    amplitude.addEventMiddleware(middleware);
+    amplitude.logEvent(new Event("middleware_event_type", "middleware_user"), extra);
+
+    assertTrue(latch.await(1L, TimeUnit.SECONDS));
+    assertEquals(1, sentEvents.get().size());
+
+    Event sentEvent = sentEvents.get().get(0);
+    assertEquals("middleware_event_type", sentEvent.eventType);
+    assertEquals("middleware_user", sentEvent.userId);
+    assertEquals("extra description", sentEvent.eventProperties.get("description"));
+  }
+
+  @Test
+  public void testWithSwallowMiddleware()
+      throws NoSuchFieldException, IllegalAccessException, AmplitudeInvalidAPIKeyException, InterruptedException {
+    Amplitude amplitude = Amplitude.getInstance("testWithSwallowMiddleware");
+    amplitude.init(apiKey);
+    amplitude.useBatchMode(false);
+    amplitude.setEventUploadThreshold(1);
+    HttpCall httpCall = getMockHttpCall(amplitude, false);
+    Response response = ResponseUtil.getSuccessResponse();
+    CountDownLatch latch = new CountDownLatch(1);
+
+    AtomicReference<List<Event>> sentEvents = new AtomicReference<>();
+    when(httpCall.makeRequest(anyList()))
+        .thenAnswer(
+            invocation -> {
+              sentEvents.set(invocation.getArgument(0));
+              latch.countDown();
+              return response;
+            });
+
+    Middleware middleware = (payload, next) -> {
+      if (payload.event.userId.equals("middleware_user_2")) {
+        next.run(payload);
+      }
+    };
+    amplitude.addEventMiddleware(middleware);
+    amplitude.logEvent(new Event("middleware_event_type", "middleware_user_1"));
+    amplitude.logEvent(new Event("middleware_event_type", "middleware_user_2"));
+
+    assertTrue(latch.await(1L, TimeUnit.SECONDS));
+    assertEquals(1, sentEvents.get().size());
+
+    Event sentEvent = sentEvents.get().get(0);
+    assertEquals("middleware_event_type", sentEvent.eventType);
+    assertEquals("middleware_user_2", sentEvent.userId);
   }
 
   private HttpCall getMockHttpCall(Amplitude amplitude, boolean useBatch)

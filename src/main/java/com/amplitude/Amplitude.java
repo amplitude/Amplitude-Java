@@ -25,6 +25,11 @@ public class Amplitude {
   private Options options;
 
   /**
+   * The runner for middleware
+   * */
+  MiddlewareRunner middlewareRunner = new MiddlewareRunner();
+
+  /**
    * Private internal constructor for Amplitude. Please use `getInstance(String name)` or
    * `getInstance()` to get a new instance.
    */
@@ -140,12 +145,29 @@ public class Amplitude {
   }
 
   /**
+   * Add middleware to the middleware runner
+   */
+  public synchronized void addEventMiddleware(Middleware middleware) {
+    middlewareRunner.add(middleware);
+  }
+
+  /**
    * Log an event to the Amplitude HTTP V2 API through the Java SDK
    *
    * @param event The event to be sent
    */
   public synchronized void logEvent(Event event) {
-    logEvent(event, null);
+    logEvent(event, null, null);
+  }
+
+  /**
+   * Log an event to the Amplitude HTTP V2 API through the Java SDK
+   *
+   * @param event The event to be sent
+   * @param extra The extra unstructured data for middleware
+   */
+  public synchronized void logEvent(Event event, MiddlewareExtra extra) {
+    logEvent(event, null, extra);
   }
 
   /**
@@ -155,6 +177,21 @@ public class Amplitude {
    * @param callbacks The callback for the event, this will run in addition to client level callback
    */
   public synchronized void logEvent(Event event, AmplitudeCallbacks callbacks) {
+    logEvent(event, callbacks, null);
+  }
+
+  /**
+   * Log an event and set a callback for this event.
+   *
+   * @param event The event to be sent
+   * @param callbacks The callback for the event, this will run in addition to client level callback
+   * @param extra The extra unstructured data for middleware
+   */
+  public synchronized void logEvent(Event event, AmplitudeCallbacks callbacks, MiddlewareExtra extra) {
+    if (!middlewareRunner.run(new MiddlewarePayload(event, extra))) {
+      return;
+    }
+
     if (callbacks != null) {
       event.callback = callbacks;
     }
