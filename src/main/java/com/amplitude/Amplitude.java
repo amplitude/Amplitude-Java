@@ -215,6 +215,13 @@ public class Amplitude {
     }
   }
 
+  public boolean shouldWait() {
+    if (eventsToSend.size() > eventUploadThreshold || httpTransport.shoudWait()) {
+      return true;
+    }
+    return false;
+  }
+
   private void updateHttpCall(HttpCallMode updatedHttpCallMode) {
     httpCallMode = updatedHttpCallMode;
 

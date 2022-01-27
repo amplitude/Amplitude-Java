@@ -373,4 +373,8 @@ class HttpTransport {
         });
     return eventQueues.isEmpty() ? null : eventQueues.get(0);
   }
+
+  public boolean shoudWait() {
+      return eventsInRetry.intValue() >= Constants.MAX_CACHED_EVENTS;
+  }
 }
