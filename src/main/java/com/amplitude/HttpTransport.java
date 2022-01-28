@@ -344,7 +344,7 @@ class HttpTransport {
         });
   }
 
-  private List<Event> getEventsFromBuffer(String userId, String deviceId) {
+  private synchronized List<Event> getEventsFromBuffer(String userId, String deviceId) {
     if (idToBuffer.containsKey(userId) && idToBuffer.get(userId).containsKey(deviceId)){
         return new ArrayList<>(idToBuffer.remove(userId).remove(deviceId));
     }
