@@ -215,11 +215,12 @@ public class Amplitude {
     }
   }
 
-  public boolean shouldWait() {
-    if (eventsToSend.size() > eventUploadThreshold || httpTransport.shoudWait()) {
-      return true;
-    }
-    return false;
+  public boolean shouldWait(Event event) {
+    return eventsToSend.size() > eventUploadThreshold || httpTransport.shouldWait(event);
+  }
+
+  public void setRecordThrottledId(boolean record) {
+    httpTransport.setRecordThrottledId(record);
   }
 
   private void updateHttpCall(HttpCallMode updatedHttpCallMode) {

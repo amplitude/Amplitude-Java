@@ -98,7 +98,7 @@ public class HttpTransportTest {
       if (i < (events.size() / 2)) {
         assertEquals(200, resultMap.get(events.get(i)));
       } else {
-        assertEquals(429, resultMap.get(events.get(i)));
+        assertEquals(413, resultMap.get(events.get(i)));
       }
     }
   }

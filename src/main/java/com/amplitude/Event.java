@@ -238,12 +238,8 @@ public class Event {
       event.put("android_id", replaceWithJSONNull(androidId));
       event.put("language", replaceWithJSONNull(language));
       event.put("ip", replaceWithJSONNull(ip));
-      event.put(
-          "event_properties",
-          (eventProperties == null) ? new JSONObject() : truncate(eventProperties));
-      event.put(
-          "user_properties",
-          (userProperties == null) ? new JSONObject() : truncate(userProperties));
+      event.put("event_properties", truncate(eventProperties));
+      event.put("user_properties", truncate(userProperties));
 
       boolean shouldLogRevenueProps = (revenue != null || price != null);
       if (shouldLogRevenueProps) {
