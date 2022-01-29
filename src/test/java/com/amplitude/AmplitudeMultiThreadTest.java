@@ -2,8 +2,8 @@ package com.amplitude;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.anyList;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.times;
 
 import java.lang.reflect.Field;
 import java.util.Arrays;
@@ -76,7 +76,7 @@ public class AmplitudeMultiThreadTest {
     Amplitude amplitude = Amplitude.getInstance("Multiple threads log event failure.");
     amplitude.init(apiKey);
     HttpCall httpCall = getMockHttpCall(amplitude);
-    Response payloadTooLargeResponse = ResponseUtil.getRateLimitResponse(false);
+    Response payloadTooLargeResponse = ResponseUtil.getPayloadTooLargeResponse();
     when(httpCall.makeRequest(anyList())).thenAnswer(invocation -> payloadTooLargeResponse);
     int total = 1000;
     CountDownCallbacks callbacks = new CountDownCallbacks(new CountDownLatch(total));

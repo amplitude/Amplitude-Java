@@ -137,6 +137,7 @@ class HttpTransport {
               if (eventsBuffer == null || eventsBuffer.size() == 0) {
                 return;
               }
+              eventsInRetry.addAndGet(-eventsBuffer.size());
               int retryTimes = Constants.RETRY_TIMEOUTS.length;
               for (int numRetries = 0; numRetries < retryTimes; numRetries++) {
                 int eventCount = eventsBuffer.size();
@@ -151,10 +152,8 @@ class HttpTransport {
                   boolean shouldRetry = retryResult.shouldRetry;
                   if (!shouldRetry) {
                     // call back done in retryEventsOnce
-                    eventsInRetry.addAndGet(-eventCount);
                     break;
                   } else if (isLastTry) {
-                    eventsInRetry.addAndGet(-eventCount);
                     triggerEventCallbacks(eventsBuffer, retryResult.statusCode, "Event retries exhausted.");
                     break;
                   }
@@ -171,10 +170,8 @@ class HttpTransport {
                       }
                     }
                     triggerEventCallbacks(eventsToDrop, retryResult.statusCode, "Invalid events.");
-                    eventsInRetry.addAndGet(-numEventsRemoved);
                   } else if (shouldReduceEventCount) {
                     List<Event> eventsToDrop = eventsBuffer.subList(eventCount / 2, eventCount);
-                    eventsInRetry.addAndGet(-eventsToDrop.size());
                     triggerEventCallbacks(eventsToDrop, retryResult.statusCode, "Event dropped for retry");
                     eventsBuffer = eventsBuffer.subList(0, eventCount / 2);
                   }
@@ -183,6 +180,7 @@ class HttpTransport {
                   // The retry logic should only be executed after the API key checking passed.
                   // This catch AmplitudeInvalidAPIKeyException is just for handling
                   // retryEventsOnce in thread.
+                  logger.debug("RETRY", "Retry thread got interrupted");
                   Thread.currentThread().interrupt();
                 }
               }
@@ -282,7 +280,7 @@ class HttpTransport {
                 throttledDeviceId.put(event.deviceId, throttledDevice.getInt(event.deviceId));
               }
             } catch (JSONException e) {
-              logger.debug("ThROTTLED", "Error get throttled userId or deviceId");
+              logger.debug("THROTTLED", "Error get throttled userId or deviceId");
             }
           }
         } else {
@@ -324,7 +322,7 @@ class HttpTransport {
     }
   }
 
-  private void addEventToBuffer(String userId, String deviceId, Event event) {
+  private synchronized void addEventToBuffer(String userId, String deviceId, Event event) {
     idToBuffer.compute(
         userId,
         (key, value) -> {
@@ -338,6 +336,7 @@ class HttpTransport {
                   deviceValue = new ConcurrentLinkedQueue<>();
                 }
                 deviceValue.add(event);
+                eventsInRetry.incrementAndGet();
                 return deviceValue;
               });
           return value;
