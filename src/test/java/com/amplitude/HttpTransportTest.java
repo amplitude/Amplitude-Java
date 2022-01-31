@@ -301,7 +301,7 @@ public class HttpTransportTest {
                 };
         httpTransport.setHttpCall(httpCall);
         httpTransport.setCallbacks(callbacks);
-        httpTransport.sendEventsWithRetry(events);
+        httpTransport.retryEvents(events, ResponseUtil.getInvalidResponse(false));
         assertTrue(latch.await(1L, TimeUnit.SECONDS));
         verify(httpCall, times(1)).makeRequest(anyList());
         for (int i = 0; i < events.size(); i++) {
@@ -333,7 +333,7 @@ public class HttpTransportTest {
                 };
         httpTransport.setHttpCall(httpCall);
         httpTransport.setCallbacks(callbacks);
-        httpTransport.sendEventsWithRetry(events);
+        httpTransport.retryEvents(events, ResponseUtil.getInvalidResponse(false));
         assertTrue(latch.await(1L, TimeUnit.SECONDS));
         verify(httpCall, times(1)).makeRequest(anyList());
         for (int i = 0; i < events.size(); i++) {

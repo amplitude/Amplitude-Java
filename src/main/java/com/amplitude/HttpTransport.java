@@ -7,9 +7,8 @@ import org.json.JSONObject;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 class EventsRetryResult {
   protected boolean shouldRetry;
@@ -34,20 +33,27 @@ class EventsRetryResult {
 
 class HttpTransport {
   // Use map to record the events are currently in retry queue.
-  private Map<String, Map<String, Queue<Event>>> idToBuffer = new ConcurrentHashMap<>();
-  private AtomicInteger eventsInRetry = new AtomicInteger(0);
-  private ConcurrentHashMap<String, Integer> throttledUserId = new ConcurrentHashMap<>();
-  private ConcurrentHashMap<String, Integer> throttledDeviceId = new ConcurrentHashMap<>();
+  private Map<String, Map<String, List<Event>>> idToBuffer = new HashMap<>();
+  private int eventsInRetry = 0;
+  private Object bufferLock = new Object();
+  private Object counterLock = new Object();
+  private Object throttleLock = new Object();
+  private Map<String, Integer> throttledUserId = new HashMap<>();
+  private Map<String, Integer> throttledDeviceId = new HashMap<>();
+  private ExecutorService consExec = Executors.newFixedThreadPool(1);
   private boolean recordThrottledId = false;
 
   private HttpCall httpCall;
   private AmplitudeLog logger;
   private AmplitudeCallbacks callbacks;
+  private int callb = 0;
+  private int ll = 0;
 
   HttpTransport(HttpCall httpCall, AmplitudeCallbacks callbacks, AmplitudeLog logger) {
     this.httpCall = httpCall;
     this.callbacks = callbacks;
     this.logger = logger;
+    consExec.submit(new EventBufferComsumer());
   }
 
   public void sendEventsWithRetry(List<Event> events) {
@@ -74,12 +80,13 @@ class HttpTransport {
 
   // The main entrance for the retry logic.
   public void retryEvents(List<Event> events, Response response) {
-    if (eventsInRetry.intValue() < Constants.MAX_CACHED_EVENTS) {
+    if (eventsInRetry < Constants.MAX_CACHED_EVENTS) {
       onEventsError(events, response);
     }
     else {
-        logger.warn("DROP EVENTS", "Retry buffer is full");
-        triggerEventCallbacks(events, response.code, "Retry buffer full, events dropped.");
+      String message = "Retry buffer is full, events dropped.";
+      logger.warn("DROP EVENTS", message);
+      triggerEventCallbacks(events, response.code, message);
     }
   }
 
@@ -111,22 +118,13 @@ class HttpTransport {
     if (eventsToRetry.isEmpty()) {
       return;
     }
-    Map<String, Set<String>> userToDevices = new HashMap<>();
     for (Event event : eventsToRetry) {
       String userId = (event.userId != null) ? event.userId : "";
       String deviceId = (event.deviceId != null) ? event.deviceId : "";
       if (userId.length() > 0 || deviceId.length() > 0) {
         addEventToBuffer(userId, deviceId, event);
-        userToDevices.computeIfAbsent(userId, key -> new HashSet<>()).add(deviceId);
       }
     }
-    userToDevices.forEach(
-        (userId, deviceSet) -> {
-          deviceSet.forEach(
-              (deviceId) -> {
-                retryEventsOnLoop(userId, deviceId);
-              });
-        });
   }
 
   private void retryEventsOnLoop(String userId, String deviceId) {
@@ -137,7 +135,9 @@ class HttpTransport {
               if (eventsBuffer == null || eventsBuffer.size() == 0) {
                 return;
               }
-              eventsInRetry.addAndGet(-eventsBuffer.size());
+              synchronized (counterLock) {
+                eventsInRetry -= eventsBuffer.size();
+              }
               int retryTimes = Constants.RETRY_TIMEOUTS.length;
               for (int numRetries = 0; numRetries < retryTimes; numRetries++) {
                 int eventCount = eventsBuffer.size();
@@ -184,11 +184,15 @@ class HttpTransport {
                   Thread.currentThread().interrupt();
                 }
               }
-              if (throttledUserId.containsKey(userId)) {
-                throttledUserId.remove(userId);
-              }
-              if (throttledDeviceId.containsKey(deviceId)) {
-                throttledDeviceId.remove(deviceId);
+              if (recordThrottledId) {
+                synchronized (throttleLock) {
+                  if (throttledUserId.containsKey(userId)) {
+                    throttledUserId.remove(userId);
+                  }
+                  if (throttledDeviceId.containsKey(deviceId)) {
+                    throttledDeviceId.remove(deviceId);
+                  }
+                }
               }
             });
     retryThread.start();
@@ -273,11 +277,13 @@ class HttpTransport {
             try {
               JSONObject throttledUser = response.rateLimitBody.getJSONObject("exceededDailyQuotaUsers");
               JSONObject throttledDevice = response.rateLimitBody.getJSONObject("exceededDailyQuotaDevices");
-              if (throttledUser.has(event.userId)) {
-                throttledUserId.put(event.userId, throttledUser.getInt(event.userId));
-              }
-              if (throttledDevice.has(event.deviceId)) {
-                throttledDeviceId.put(event.deviceId, throttledDevice.getInt(event.deviceId));
+              synchronized (throttleLock) {
+                if (throttledUser.has(event.userId)) {
+                  throttledUserId.put(event.userId, throttledUser.getInt(event.userId));
+                }
+                if (throttledDevice.has(event.deviceId)) {
+                  throttledDeviceId.put(event.deviceId, throttledDevice.getInt(event.deviceId));
+                }
               }
             } catch (JSONException e) {
               logger.debug("THROTTLED", "Error get throttled userId or deviceId");
@@ -293,12 +299,6 @@ class HttpTransport {
     return events;
   }
 
-  // Cleans up the id in the buffer map if the job is done
-  private void cleanUpBuffer(String userId) {
-    idToBuffer.computeIfPresent(
-        userId, (key, value) -> value == null || value.isEmpty() ? null : value);
-  }
-
   protected boolean shouldRetryForStatus(Status status) {
     return (status == Status.INVALID
         || status == Status.PAYLOAD_TOO_LARGE
@@ -306,7 +306,7 @@ class HttpTransport {
         || status == Status.TIMEOUT);
   }
 
-  private void triggerEventCallbacks(List<Event> events, int status, String message) {
+  private synchronized void triggerEventCallbacks(List<Event> events, int status, String message) {
     if (events == null || events.isEmpty()) {
       return;
     }
@@ -322,30 +322,30 @@ class HttpTransport {
     }
   }
 
-  private synchronized void addEventToBuffer(String userId, String deviceId, Event event) {
-    idToBuffer.compute(
-        userId,
-        (key, value) -> {
-          if (value == null) {
-            value = new ConcurrentHashMap<>();
-          }
-          value.compute(
-              deviceId,
-              (deviceKey, deviceValue) -> {
-                if (deviceValue == null) {
-                  deviceValue = new ConcurrentLinkedQueue<>();
-                }
-                deviceValue.add(event);
-                eventsInRetry.incrementAndGet();
-                return deviceValue;
-              });
-          return value;
-        });
+  private void addEventToBuffer(String userId, String deviceId, Event event) {
+    synchronized (bufferLock) {
+      if (!idToBuffer.containsKey(userId)) {
+        idToBuffer.put(userId, new HashMap<>());
+      }
+      if (!idToBuffer.get(userId).containsKey(deviceId)) {
+        idToBuffer.get(userId).put(deviceId, new ArrayList<>());
+      }
+      idToBuffer.get(userId).get(deviceId).add(event);
+    }
+    synchronized (counterLock) {
+      eventsInRetry++;
+    }
   }
 
-  private synchronized List<Event> getEventsFromBuffer(String userId, String deviceId) {
-    if (idToBuffer.containsKey(userId) && idToBuffer.get(userId).containsKey(deviceId)){
-        return new ArrayList<>(idToBuffer.remove(userId).remove(deviceId));
+  private List<Event> getEventsFromBuffer(String userId, String deviceId) {
+    synchronized (bufferLock) {
+      if (idToBuffer.containsKey(userId) && idToBuffer.get(userId).containsKey(deviceId)) {
+        List<Event> events = idToBuffer.get(userId).remove(deviceId);
+        if (idToBuffer.get(userId).isEmpty()) {
+          idToBuffer.remove(userId);
+        }
+        return events;
+      }
     }
     return null;
   }
@@ -354,14 +354,40 @@ class HttpTransport {
       if (throttledUserId.containsKey(event.userId) || throttledDeviceId.containsKey(event.deviceId)) {
         return true;
       }
-      return eventsInRetry.intValue() >= Constants.MAX_CACHED_EVENTS;
+      return eventsInRetry >= Constants.MAX_CACHED_EVENTS;
   }
 
   public void setRecordThrottledId(boolean record) {
     recordThrottledId = record;
   }
 
-  public boolean isRecordThrottledId() {
-    return recordThrottledId;
+  class EventBufferComsumer implements Runnable {
+
+    @Override
+    public void run() {
+      while (true) {
+        if (idToBuffer.isEmpty()) {
+          try {
+            Thread.sleep(100L);
+          } catch (InterruptedException e) {
+            logger.error("Interrupted", e.getMessage());
+          }
+        } else {
+          Set<String> users;
+          synchronized (bufferLock) {
+            users = new HashSet<>(idToBuffer.keySet());
+          }
+          for (String userId : users) {
+            Set<String> devices;
+            synchronized (bufferLock) {
+              devices = new HashSet<>(idToBuffer.get(userId).keySet());
+            }
+            for (String deviceId : devices) {
+              retryEventsOnLoop(userId, deviceId);
+            }
+          }
+        }
+      }
+    }
   }
 }
