@@ -11,15 +11,21 @@ import java.util.concurrent.TimeUnit;
 public class LocalUploadDemo {
 
     public static void main(String[] args) throws InterruptedException{
+        // Create and initialize Amplitude client
         Amplitude client = Amplitude.getInstance();
         client.init("");
+
         // use batch mode for higher throttling limits
         client.useBatchMode(true);
+
         // this config can print debug info into console, including response body of each requests
         client.setLogMode(AmplitudeLog.LogMode.DEBUG);
+
         // for large amount of events to send, config a higher update threshold to upload more events in one request
         // payload size limit for batch api is 20MB, max events per request is 2000
+        // https://developers.amplitude.com/docs/batch-event-upload-api#feature-comparison-between-httpapi-2httpapi--batch
         client.setEventUploadThreshold(1500);
+
         // config client to record throttled userId and deviceId. shouldWait(event) will return true if userid or deviceid was throttled
         // can wait a short period of time and continue
         client.setRecordThrottledId(true);

@@ -351,7 +351,7 @@ class HttpTransport {
   }
 
   public boolean shouldWait(Event event) {
-      if (throttledUserId.containsKey(event.userId) || throttledDeviceId.containsKey(event.deviceId)) {
+      if (recordThrottledId && (throttledUserId.containsKey(event.userId) || throttledDeviceId.containsKey(event.deviceId))) {
         return true;
       }
       return eventsInRetry >= Constants.MAX_CACHED_EVENTS;
