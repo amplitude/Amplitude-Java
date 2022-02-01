@@ -95,10 +95,12 @@ public class HttpTransportTest {
     assertTrue(latch.await(1L, TimeUnit.SECONDS));
     verify(httpCall, times(4)).makeRequest(anyList());
     for (int i = 0; i < events.size(); i++) {
-      if (i < (events.size() / 2)) {
+      if (i < (events.size() / 4)) {
         assertEquals(200, resultMap.get(events.get(i)));
+      } else if (i < (events.size() / 2)) {
+          assertEquals(413, resultMap.get(events.get(i)));
       } else {
-        assertEquals(413, resultMap.get(events.get(i)));
+        assertEquals(429, resultMap.get(events.get(i)));
       }
     }
   }

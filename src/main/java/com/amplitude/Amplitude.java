@@ -248,11 +248,6 @@ public class Amplitude {
     httpTransport.setRecordThrottledId(record);
   }
 
-  public void shutdown() {
-    flushEvents();
-    httpTransport.join();
-  }
-
   private void updateHttpCall(HttpCallMode updatedHttpCallMode) {
     httpCallMode = updatedHttpCallMode;
 
