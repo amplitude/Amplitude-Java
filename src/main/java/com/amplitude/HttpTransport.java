@@ -119,8 +119,23 @@ class HttpTransport {
         addEventToBuffer(userId, deviceId, event);
       }
     }
-    Thread retryBufferConsumer = new Thread(new EventBufferConsumer());
-    retryBufferConsumer.start();
+    Set<String> users;
+    synchronized (bufferLock) {
+      users = new HashSet<>(idToBuffer.keySet());
+    }
+    for (String userId : users) {
+      Set<String> devices;
+      synchronized (bufferLock) {
+        devices = new HashSet<>(idToBuffer.get(userId).keySet());
+      }
+      for (String deviceId : devices) {
+        try {
+          retryThreadPool.submit(new RetryEventsOnLoop(userId, deviceId));
+        } catch (RejectedExecutionException e) {
+          logger.warn("Failed init retry thread", e.getMessage());
+        }
+      }
+    }
   }
 
   private EventsRetryResult retryEventsOnce(String userId, String deviceId, List<Event> events)
@@ -275,29 +290,6 @@ class HttpTransport {
 
   public void setRecordThrottledId(boolean record) {
     recordThrottledId = record;
-  }
-
-  class EventBufferConsumer implements Runnable {
-    @Override
-    public void run() {
-      Set<String> users;
-      synchronized (bufferLock) {
-        users = new HashSet<>(idToBuffer.keySet());
-      }
-      for (String userId : users) {
-        Set<String> devices;
-        synchronized (bufferLock) {
-          devices = new HashSet<>(idToBuffer.get(userId).keySet());
-        }
-        for (String deviceId : devices) {
-          try {
-            retryThreadPool.submit(new RetryEventsOnLoop(userId, deviceId));
-          } catch (RejectedExecutionException e) {
-            logger.warn("Failed init retry thread", e.getMessage());
-          }
-        }
-      }
-    }
   }
 
   class RetryEventsOnLoop implements Runnable {
