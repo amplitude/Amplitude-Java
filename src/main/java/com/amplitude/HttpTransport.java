@@ -40,20 +40,21 @@ class HttpTransport {
   private Object throttleLock = new Object();
   private Map<String, Integer> throttledUserId = new HashMap<>();
   private Map<String, Integer> throttledDeviceId = new HashMap<>();
-  private ExecutorService consExec = Executors.newFixedThreadPool(1);
+  //private ExecutorService retryThreadPool = Executors.newFixedThreadPool(5);
+  private Thread retryBufferConsumer;
   private boolean recordThrottledId = false;
+  private boolean isRetry = true;
 
   private HttpCall httpCall;
   private AmplitudeLog logger;
   private AmplitudeCallbacks callbacks;
-  private int callb = 0;
-  private int ll = 0;
 
   HttpTransport(HttpCall httpCall, AmplitudeCallbacks callbacks, AmplitudeLog logger) {
     this.httpCall = httpCall;
     this.callbacks = callbacks;
     this.logger = logger;
-    consExec.submit(new EventBufferComsumer());
+    retryBufferConsumer = new Thread(new EventBufferConsumer());
+    retryBufferConsumer.start();
   }
 
   public void sendEventsWithRetry(List<Event> events) {
@@ -249,16 +250,7 @@ class HttpTransport {
     List<Event> eventsToRetry = new ArrayList<>();
     List<Event> eventsToDrop = new ArrayList<>();
     // Filter invalid event out based on the response code.
-    if (response.status == Status.SUCCESS) {
-        triggerEventCallbacks(events, response.code, "Events sent success.");
-      return eventsToRetry;
-    } else if (response.status == Status.FAILED) {
-        triggerEventCallbacks(events, response.code, "Event sent Failed.");
-        return eventsToRetry;
-    } else if (response.status == Status.UNKNOWN){
-        triggerEventCallbacks(events, response.code, "Unknown response status.");
-        return eventsToRetry;
-    } else if (response.status == Status.INVALID) {
+    if (response.status == Status.INVALID) {
       int[] invalidEventIndices = response.collectInvalidEventIndices();
       for (int i = 0; i < events.size(); i++) {
         if (Arrays.binarySearch(invalidEventIndices, i) < 0) {
@@ -361,11 +353,19 @@ class HttpTransport {
     recordThrottledId = record;
   }
 
-  class EventBufferComsumer implements Runnable {
+  public void join() {
+    try {
+      isRetry = false;
+      retryBufferConsumer.join();
+    } catch (InterruptedException e) {
+      logger.error("Failed to join", e.getMessage());
+    }
+  }
 
+  class EventBufferConsumer implements Runnable {
     @Override
     public void run() {
-      while (true) {
+      while (isRetry) {
         if (idToBuffer.isEmpty()) {
           try {
             Thread.sleep(100L);
