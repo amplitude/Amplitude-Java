@@ -5,11 +5,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionException;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.*;
 
 class EventsRetryResult {
   protected boolean shouldRetry;
@@ -34,12 +30,15 @@ class EventsRetryResult {
 
 class HttpTransport {
   // Use map to record the events are currently in retry queue.
-  private Map<String, Map<String, Queue<Event>>> idToBuffer = new ConcurrentHashMap<>();
-  private AtomicInteger eventsInRetry = new AtomicInteger(0);
   private Object throttleLock = new Object();
   private Map<String, Integer> throttledUserId = new HashMap<>();
   private Map<String, Integer> throttledDeviceId = new HashMap<>();
   private boolean recordThrottledId = false;
+  private Map<String, Map<String, List<Event>>> idToBuffer = new HashMap<>();
+  private int eventsInRetry = 0;
+  private Object bufferLock = new Object();
+  private Object counterLock = new Object();
+  private ExecutorService retryThreadPool = Executors.newFixedThreadPool(10);
 
   private HttpCall httpCall;
   private AmplitudeLog logger;
