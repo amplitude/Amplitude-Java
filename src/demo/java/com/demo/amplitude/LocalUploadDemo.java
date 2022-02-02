@@ -41,7 +41,7 @@ public class LocalUploadDemo {
             Event ampEvent = new Event("General"+ (i % 20), "Test_UserID_B" + (i % 5000));
             while (client.shouldWait(ampEvent)) {
                 System.out.println("Client is busy. Waiting for log event " + ampEvent.eventType);
-                TimeUnit.SECONDS.sleep(5L);
+                TimeUnit.SECONDS.sleep(60L);
             }
             ampEvent.userProperties = new JSONObject()
                     .put("property1", "p"+i)
