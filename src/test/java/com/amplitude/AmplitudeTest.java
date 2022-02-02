@@ -253,7 +253,8 @@ public class AmplitudeTest {
 
   @Test
   public void testMiddlewareSupport()
-      throws NoSuchFieldException, IllegalAccessException, AmplitudeInvalidAPIKeyException, InterruptedException {
+      throws NoSuchFieldException, IllegalAccessException, AmplitudeInvalidAPIKeyException,
+          InterruptedException {
     Amplitude amplitude = Amplitude.getInstance("testMiddlewareSupport");
     amplitude.init(apiKey);
     amplitude.useBatchMode(false);
@@ -274,18 +275,19 @@ public class AmplitudeTest {
     Map<String, Object> extraMap = new HashMap<>();
     extraMap.put("description", "extra description");
     MiddlewareExtra extra = new MiddlewareExtra(extraMap);
-    Middleware middleware = (payload, next) -> {
-      if (payload.event.eventProperties == null) {
-        payload.event.eventProperties = new JSONObject();
-      }
-      try {
-        payload.event.eventProperties.put("description", payload.extra.get("description"));
-      } catch (JSONException e) {
-        e.printStackTrace();
-      }
+    Middleware middleware =
+        (payload, next) -> {
+          if (payload.event.eventProperties == null) {
+            payload.event.eventProperties = new JSONObject();
+          }
+          try {
+            payload.event.eventProperties.put("description", payload.extra.get("description"));
+          } catch (JSONException e) {
+            e.printStackTrace();
+          }
 
-      next.run(payload);
-    };
+          next.run(payload);
+        };
     amplitude.addEventMiddleware(middleware);
     amplitude.logEvent(new Event("middleware_event_type", "middleware_user"), extra);
 
@@ -300,7 +302,8 @@ public class AmplitudeTest {
 
   @Test
   public void testWithSwallowMiddleware()
-      throws NoSuchFieldException, IllegalAccessException, AmplitudeInvalidAPIKeyException, InterruptedException {
+      throws NoSuchFieldException, IllegalAccessException, AmplitudeInvalidAPIKeyException,
+          InterruptedException {
     Amplitude amplitude = Amplitude.getInstance("testWithSwallowMiddleware");
     amplitude.init(apiKey);
     amplitude.useBatchMode(false);
@@ -318,11 +321,12 @@ public class AmplitudeTest {
               return response;
             });
 
-    Middleware middleware = (payload, next) -> {
-      if (payload.event.userId.equals("middleware_user_2")) {
-        next.run(payload);
-      }
-    };
+    Middleware middleware =
+        (payload, next) -> {
+          if (payload.event.userId.equals("middleware_user_2")) {
+            next.run(payload);
+          }
+        };
     amplitude.addEventMiddleware(middleware);
     amplitude.logEvent(new Event("middleware_event_type", "middleware_user_1"));
     amplitude.logEvent(new Event("middleware_event_type", "middleware_user_2"));
@@ -333,6 +337,27 @@ public class AmplitudeTest {
     Event sentEvent = sentEvents.get().get(0);
     assertEquals("middleware_event_type", sentEvent.eventType);
     assertEquals("middleware_user_2", sentEvent.userId);
+  }
+
+  @Test
+  public void testShouldWait() throws NoSuchFieldException, IllegalAccessException {
+    Amplitude amplitude = Amplitude.getInstance();
+    amplitude.init(apiKey);
+    Event event = new Event("test event", "test-user-0");
+    Event event2 = new Event("test event", "test-user-1");
+    assertFalse(amplitude.shouldWait(event));
+    Field httpTransportField = amplitude.getClass().getDeclaredField("httpTransport");
+    httpTransportField.setAccessible(true);
+    HttpTransport transport = (HttpTransport) httpTransportField.get(amplitude);
+    amplitude.setRecordThrottledId(true);
+    Field userIdMapField = transport.getClass().getDeclaredField("throttledUserId");
+    Map<String, Integer> userMap = mock(HashMap.class);
+    userIdMapField.setAccessible(true);
+    userIdMapField.set(transport, userMap);
+    when(userMap.containsKey("test-user-0")).thenReturn(true);
+    when(userMap.containsKey("test-user-1")).thenReturn(false);
+    assertTrue(amplitude.shouldWait(event));
+    assertFalse(amplitude.shouldWait(event2));
   }
 
   private HttpCall getMockHttpCall(Amplitude amplitude, boolean useBatch)

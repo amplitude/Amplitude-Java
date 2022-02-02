@@ -61,9 +61,9 @@ class HttpTransport {
               } else if (status == Status.SUCCESS) {
                 triggerEventCallbacks(events, response.code, "Event sent success.");
               } else if (status == Status.FAILED) {
-                  triggerEventCallbacks(events, response.code, "Event sent Failed.");
-              }  else {
-                  triggerEventCallbacks(events, response.code, "Unknown response status.");
+                triggerEventCallbacks(events, response.code, "Event sent Failed.");
+              } else {
+                triggerEventCallbacks(events, response.code, "Unknown response status.");
               }
             })
         .exceptionally(
@@ -281,8 +281,10 @@ class HttpTransport {
           eventsToDrop.add(event);
           if (recordThrottledId) {
             try {
-              JSONObject throttledUser = response.rateLimitBody.getJSONObject("exceededDailyQuotaUsers");
-              JSONObject throttledDevice = response.rateLimitBody.getJSONObject("exceededDailyQuotaDevices");
+              JSONObject throttledUser =
+                  response.rateLimitBody.getJSONObject("exceededDailyQuotaUsers");
+              JSONObject throttledDevice =
+                  response.rateLimitBody.getJSONObject("exceededDailyQuotaDevices");
               synchronized (throttleLock) {
                 if (throttledUser.has(event.userId)) {
                   throttledUserId.put(event.userId, throttledUser.getInt(event.userId));
@@ -407,7 +409,9 @@ class HttpTransport {
   }
 
   public boolean shouldWait(Event event) {
-    if (recordThrottledId && (throttledUserId.containsKey(event.userId) || throttledDeviceId.containsKey(event.deviceId))) {
+    if (recordThrottledId
+        && (throttledUserId.containsKey(event.userId)
+            || throttledDeviceId.containsKey(event.deviceId))) {
       return true;
     }
     return eventsInRetry.intValue() >= Constants.MAX_CACHED_EVENTS;
