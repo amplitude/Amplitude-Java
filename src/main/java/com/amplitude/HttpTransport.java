@@ -1,6 +1,8 @@
 package com.amplitude;
 
 import com.amplitude.exception.AmplitudeInvalidAPIKeyException;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -34,6 +36,10 @@ class HttpTransport {
   // Use map to record the events are currently in retry queue.
   private Map<String, Map<String, Queue<Event>>> idToBuffer = new ConcurrentHashMap<>();
   private AtomicInteger eventsInRetry = new AtomicInteger(0);
+  private Object throttleLock = new Object();
+  private Map<String, Integer> throttledUserId = new HashMap<>();
+  private Map<String, Integer> throttledDeviceId = new HashMap<>();
+  private boolean recordThrottledId = false;
 
   private HttpCall httpCall;
   private AmplitudeLog logger;
@@ -185,6 +191,16 @@ class HttpTransport {
                 }
               }
               eventsInRetry.addAndGet(-eventCount);
+              if (recordThrottledId) {
+                synchronized (throttleLock) {
+                  if (throttledUserId.containsKey(userId)) {
+                    throttledUserId.remove(userId);
+                  }
+                  if (throttledDeviceId.containsKey(deviceId)) {
+                    throttledDeviceId.remove(deviceId);
+                  }
+                }
+              }
             });
     retryThread.start();
   }
@@ -263,6 +279,22 @@ class HttpTransport {
           eventsToRetry.add(event);
         } else {
           eventsToDrop.add(event);
+          if (recordThrottledId) {
+            try {
+              JSONObject throttledUser = response.rateLimitBody.getJSONObject("exceededDailyQuotaUsers");
+              JSONObject throttledDevice = response.rateLimitBody.getJSONObject("exceededDailyQuotaDevices");
+              synchronized (throttleLock) {
+                if (throttledUser.has(event.userId)) {
+                  throttledUserId.put(event.userId, throttledUser.getInt(event.userId));
+                }
+                if (throttledDevice.has(event.deviceId)) {
+                  throttledDeviceId.put(event.deviceId, throttledDevice.getInt(event.deviceId));
+                }
+              }
+            } catch (JSONException e) {
+              logger.debug("THROTTLED", "Error get throttled userId or deviceId");
+            }
+          }
         }
       }
       triggerEventCallbacks(eventsToDrop, response.code, "User or Device Exceed Daily Quota.");
@@ -372,5 +404,16 @@ class HttpTransport {
           return value;
         });
     return eventQueues.isEmpty() ? null : eventQueues.get(0);
+  }
+
+  public boolean shouldWait(Event event) {
+    if (recordThrottledId && (throttledUserId.containsKey(event.userId) || throttledDeviceId.containsKey(event.deviceId))) {
+      return true;
+    }
+    return eventsInRetry.intValue() >= Constants.MAX_CACHED_EVENTS;
+  }
+
+  public void setRecordThrottledId(boolean record) {
+    recordThrottledId = record;
   }
 }
