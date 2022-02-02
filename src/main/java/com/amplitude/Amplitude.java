@@ -18,6 +18,7 @@ public class Amplitude {
   private HttpTransport httpTransport;
   private int eventUploadThreshold = Constants.EVENT_BUF_COUNT;
   private int eventUploadPeriodMillis = Constants.EVENT_BUF_TIME_MILLIS;
+  private Object eventQueueLock = new Object();
 
   /**
    * A dictionary of key-value pairs that represent additional instructions for server save operation.
@@ -156,7 +157,7 @@ public class Amplitude {
    *
    * @param event The event to be sent
    */
-  public synchronized void logEvent(Event event) {
+  public void logEvent(Event event) {
     logEvent(event, null, null);
   }
 
@@ -166,7 +167,7 @@ public class Amplitude {
    * @param event The event to be sent
    * @param extra The extra unstructured data for middleware
    */
-  public synchronized void logEvent(Event event, MiddlewareExtra extra) {
+  public void logEvent(Event event, MiddlewareExtra extra) {
     logEvent(event, null, extra);
   }
 
@@ -176,7 +177,7 @@ public class Amplitude {
    * @param event The event to be sent
    * @param callbacks The callback for the event, this will run in addition to client level callback
    */
-  public synchronized void logEvent(Event event, AmplitudeCallbacks callbacks) {
+  public void logEvent(Event event, AmplitudeCallbacks callbacks) {
     logEvent(event, callbacks, null);
   }
 
@@ -187,7 +188,7 @@ public class Amplitude {
    * @param callbacks The callback for the event, this will run in addition to client level callback
    * @param extra The extra unstructured data for middleware
    */
-  public synchronized void logEvent(Event event, AmplitudeCallbacks callbacks, MiddlewareExtra extra) {
+  public void logEvent(Event event, AmplitudeCallbacks callbacks, MiddlewareExtra extra) {
     if (!middlewareRunner.run(new MiddlewarePayload(event, extra))) {
       return;
     }
@@ -195,8 +196,12 @@ public class Amplitude {
     if (callbacks != null) {
       event.callback = callbacks;
     }
-    eventsToSend.add(event);
-    if (eventsToSend.size() >= this.eventUploadThreshold) {
+    int queueSize = 0;
+    synchronized (eventQueueLock) {
+      eventsToSend.add(event);
+      queueSize = eventsToSend.size();
+    }
+    if (queueSize >= this.eventUploadThreshold) {
       flushEvents();
     } else {
       scheduleFlushEvents();
@@ -207,10 +212,15 @@ public class Amplitude {
    * Forces events currently in the event buffer to be sent to Amplitude API endpoint. Only one
    * thread may flush at a time. Next flushes will happen immediately after.
    */
-  public synchronized void flushEvents() {
-    if (eventsToSend.size() > 0) {
-      List<Event> eventsInTransit = new ArrayList<>(eventsToSend);
-      eventsToSend.clear();
+  public void flushEvents() {
+    List<Event> eventsInTransit = new ArrayList<>();
+    synchronized (eventQueueLock) {
+      if (eventsToSend.size() > 0) {
+        eventsInTransit.addAll(eventsToSend);
+        eventsToSend.clear();
+      }
+    }
+    if (!eventsInTransit.isEmpty()) {
       httpTransport.sendEventsWithRetry(eventsInTransit);
     }
   }
@@ -226,7 +236,7 @@ public class Amplitude {
     httpTransport.setHttpCall(httpCall);
   }
 
-  private void scheduleFlushEvents() {
+  private synchronized void scheduleFlushEvents() {
     if (!aboutToStartFlushing) {
       aboutToStartFlushing = true;
       Thread flushThread =
@@ -235,7 +245,7 @@ public class Amplitude {
                 try {
                   Thread.sleep(this.eventUploadPeriodMillis);
                 } catch (InterruptedException e) {
-
+                  logger.warn("Error schedule flush events.", e.getMessage());
                 }
                 flushEvents();
                 aboutToStartFlushing = false;
