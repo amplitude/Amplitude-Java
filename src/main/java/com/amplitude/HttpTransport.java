@@ -245,12 +245,6 @@ class HttpTransport {
     return eventsToRetry;
   }
 
-  // Cleans up the id in the buffer map if the job is done
-  private void cleanUpBuffer(String userId) {
-    idToBuffer.computeIfPresent(
-        userId, (key, value) -> value == null || value.isEmpty() ? null : value);
-  }
-
   protected boolean shouldRetryForStatus(Status status) {
     return (status == Status.INVALID
         || status == Status.PAYLOAD_TOO_LARGE
