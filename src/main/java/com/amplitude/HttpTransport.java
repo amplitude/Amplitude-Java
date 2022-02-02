@@ -190,6 +190,15 @@ class HttpTransport {
     List<Event> eventsToDrop = new ArrayList<>();
     // Filter invalid event out based on the response code.
     if (response.status == Status.INVALID) {
+      if ((response.invalidRequestBody != null
+              && response.invalidRequestBody.has("missingField")
+              && response.invalidRequestBody.getString("missingField").length() > 0)
+              || events.size() == 1) {
+        // Return early if there's an issue with the entire payload
+        // or if there's only one event and its invalid
+        triggerEventCallbacks(events, response.code, response.error);
+        return eventsToRetry;
+      }
       int[] invalidEventIndices = response.collectInvalidEventIndices();
       for (int i = 0; i < events.size(); i++) {
         if (Arrays.binarySearch(invalidEventIndices, i) < 0) {
