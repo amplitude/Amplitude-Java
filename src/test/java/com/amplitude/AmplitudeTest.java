@@ -335,6 +335,12 @@ public class AmplitudeTest {
     assertEquals("middleware_user_2", sentEvent.userId);
   }
 
+  @Test public void testShouldWait() {
+    Amplitude amplitude = Amplitude.getInstance();
+    amplitude.init(apiKey);
+    assertFalse(amplitude.shouldWait(new Event("test event", "test-user-id")));
+  }
+
   private HttpCall getMockHttpCall(Amplitude amplitude, boolean useBatch)
       throws NoSuchFieldException, IllegalAccessException {
     HttpCall httpCall = mock(HttpCall.class);

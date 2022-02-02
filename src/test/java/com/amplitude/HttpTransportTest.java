@@ -1,7 +1,6 @@
 package com.amplitude;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -303,7 +302,7 @@ public class HttpTransportTest {
                 };
         httpTransport.setHttpCall(httpCall);
         httpTransport.setCallbacks(callbacks);
-        httpTransport.retryEvents(events, ResponseUtil.getInvalidResponse(false));
+        httpTransport.sendEventsWithRetry(events);
         assertTrue(latch.await(1L, TimeUnit.SECONDS));
         verify(httpCall, times(1)).makeRequest(anyList());
         for (int i = 0; i < events.size(); i++) {
@@ -335,11 +334,36 @@ public class HttpTransportTest {
                 };
         httpTransport.setHttpCall(httpCall);
         httpTransport.setCallbacks(callbacks);
-        httpTransport.retryEvents(events, ResponseUtil.getInvalidResponse(false));
+        httpTransport.sendEventsWithRetry(events);
         assertTrue(latch.await(1L, TimeUnit.SECONDS));
         verify(httpCall, times(1)).makeRequest(anyList());
         for (int i = 0; i < events.size(); i++) {
             assertEquals(0, resultMap.get(events.get(i)));
         }
+    }
+
+    @Test
+    public void testRecordThrottledId()
+            throws AmplitudeInvalidAPIKeyException, InterruptedException {
+        HttpCall httpCall = mock(HttpCall.class);
+        CountDownLatch latch = new CountDownLatch(1);
+        Response rateLimitResponse = ResponseUtil.getRateLimitResponse(true);
+        when(httpCall.makeRequest(anyList()))
+                .thenAnswer(
+                        invocation -> {
+                            latch.countDown();
+                            return rateLimitResponse;
+                        });
+        List<Event> events = EventsGenerator.generateEvents(10);
+        httpTransport.setHttpCall(httpCall);
+        httpTransport.setRecordThrottledId(true);
+        httpTransport.sendEventsWithRetry(events);
+        assertTrue(latch.await(1L, TimeUnit.SECONDS));
+        Event testEvent = new Event("test event type", "test-user-id-0");
+        assertTrue(httpTransport.shouldWait(testEvent));
+        testEvent = new Event("test event type", "test-user-id-2");
+        assertFalse(httpTransport.shouldWait(testEvent));
+        testEvent = new Event("test event type", "test-user-id-2", "test-device");
+        assertFalse(httpTransport.shouldWait(testEvent));
     }
 }

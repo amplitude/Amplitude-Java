@@ -43,10 +43,10 @@ class ResponseUtil {
     if (withExceedQuota) {
       rateLimitResponse.rateLimitBody = new JSONObject();
       JSONObject exceededDailyQuotaUsers = new JSONObject();
-      exceededDailyQuotaUsers.put("test-user-id-0", true);
+      exceededDailyQuotaUsers.put("test-user-id-0", 19);
       rateLimitResponse.rateLimitBody.put("exceededDailyQuotaUsers", exceededDailyQuotaUsers);
       JSONObject exceededDailyQuotaDevices = new JSONObject();
-      exceededDailyQuotaDevices.put("test-device", true);
+      exceededDailyQuotaDevices.put("test-device", 28);
       rateLimitResponse.rateLimitBody.put("exceededDailyQuotaDevices", exceededDailyQuotaDevices);
     }
     return rateLimitResponse;
