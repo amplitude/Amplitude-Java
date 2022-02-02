@@ -74,10 +74,14 @@ class HttpTransport {
 
   // The main entrance for the retry logic.
   public void retryEvents(List<Event> events, Response response) {
-      if (eventsInRetry.get() < Constants.MAX_CACHED_EVENTS) {
+      int bufferSize;
+      synchronized (counterLock) {
+          bufferSize  = eventsInRetry;
+      }
+      if (bufferSize < Constants.MAX_CACHED_EVENTS) {
           onEventsError(events, response);
       } else {
-          String message = "Retry buffer is full(" + eventsInRetry.get() + "), " + events.size() + " events dropped.";
+          String message = "Retry buffer is full(" + bufferSize + "), " + events.size() + " events dropped.";
           logger.warn("DROP EVENTS", message);
           triggerEventCallbacks(events, response.code, message);
       }
