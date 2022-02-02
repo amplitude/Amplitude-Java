@@ -230,6 +230,7 @@ class HttpTransport {
         break;
       case PAYLOAD_TOO_LARGE:
         shouldRetry = true;
+        shouldReduceEventCount = true;
         break;
       case INVALID:
         if (events.size() == 1) {
@@ -238,6 +239,14 @@ class HttpTransport {
         } else {
           eventIndicesToRemove = response.collectInvalidEventIndices();
         }
+        break;
+      case UNKNOWN:
+        shouldRetry = false;
+        triggerEventCallbacks(events, response.code, "Unknown response status.");
+        break;
+      case FAILED:
+        shouldRetry = false;
+        triggerEventCallbacks(events, response.code, "Event sent Failed.");
         break;
       default:
         break;
