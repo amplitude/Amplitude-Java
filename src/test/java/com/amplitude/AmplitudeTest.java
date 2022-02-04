@@ -13,7 +13,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.lang.reflect.Field;
 import java.util.*;
+import java.util.concurrent.BrokenBarrierException;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
@@ -342,12 +344,13 @@ public class AmplitudeTest {
   @Test
   public void testShouldWait()
       throws NoSuchFieldException, IllegalAccessException, AmplitudeInvalidAPIKeyException,
-          InterruptedException {
+          InterruptedException, BrokenBarrierException {
     Amplitude amplitude = Amplitude.getInstance();
     amplitude.init(apiKey);
     Event event = new Event("test event", "test-user-0");
     Event event2 = new Event("test event", "test-user-1");
     HttpCall httpCall = getMockHttpCall(amplitude, false);
+    CyclicBarrier barrier = new CyclicBarrier(2);
     Response response = new Response();
     response.status = Status.RATELIMIT;
     response.code = 429;
@@ -362,6 +365,11 @@ public class AmplitudeTest {
         .thenAnswer(
             invocation -> {
               return response;
+            })
+        .thenAnswer(
+            invocation -> {
+              barrier.await();
+              return response;
             });
     assertFalse(amplitude.shouldWait(event));
     Field httpTransportField = amplitude.getClass().getDeclaredField("httpTransport");
@@ -369,17 +377,10 @@ public class AmplitudeTest {
     HttpTransport transport = (HttpTransport) httpTransportField.get(amplitude);
     amplitude.setRecordThrottledId(true);
     assertFalse(amplitude.shouldWait(event));
-    Field userIdMapField = transport.getClass().getDeclaredField("throttledUserId");
-    Map<String, Integer> userMap = mock(HashMap.class);
-    userIdMapField.setAccessible(true);
-    userIdMapField.set(transport, userMap);
-    when(userMap.containsKey("test-user-0")).thenReturn(true);
-    when(userMap.containsKey("test-user-1")).thenReturn(false);
+    transport.retryEvents(Arrays.asList(event, event2), response);
     assertTrue(amplitude.shouldWait(event));
     assertFalse(amplitude.shouldWait(event2));
-    transport.retryEvents(Arrays.asList(event, event2), response);
-    Thread.sleep(1000L);
-    verify(userMap, atLeast(1)).put(eq("test-user-0"), anyInt());
+    barrier.await();
   }
 
   private HttpCall getMockHttpCall(Amplitude amplitude, boolean useBatch)
