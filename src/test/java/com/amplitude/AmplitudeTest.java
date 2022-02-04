@@ -351,6 +351,7 @@ public class AmplitudeTest {
     Event event2 = new Event("test event", "test-user-1");
     HttpCall httpCall = getMockHttpCall(amplitude, false);
     CyclicBarrier barrier = new CyclicBarrier(2);
+    CountDownLatch latch = new CountDownLatch(1);
     Response response = new Response();
     response.status = Status.RATELIMIT;
     response.code = 429;
@@ -368,6 +369,7 @@ public class AmplitudeTest {
             })
         .thenAnswer(
             invocation -> {
+              latch.countDown();
               barrier.await();
               return response;
             });
@@ -378,6 +380,7 @@ public class AmplitudeTest {
     amplitude.setRecordThrottledId(true);
     assertFalse(amplitude.shouldWait(event));
     transport.retryEvents(Arrays.asList(event, event2), response);
+    assertTrue(latch.await(1, TimeUnit.SECONDS));
     assertTrue(amplitude.shouldWait(event));
     assertFalse(amplitude.shouldWait(event2));
     barrier.await();
