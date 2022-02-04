@@ -72,8 +72,8 @@ public class Response {
     if (status == Status.RATELIMIT && rateLimitBody != null) {
       JSONObject exceededDailyQuotaUsers = rateLimitBody.getJSONObject("exceededDailyQuotaUsers");
       JSONObject exceededDailyQuotaDevices = rateLimitBody.getJSONObject("exceededDailyQuotaDevices");
-      if ((userId.length() > 0 && exceededDailyQuotaUsers.has(userId))
-          || (deviceId.length() > 0 && exceededDailyQuotaDevices.has(deviceId))) {
+      if ((userId != null && userId.length() > 0 && exceededDailyQuotaUsers.has(userId))
+          || (deviceId != null && deviceId.length() > 0 && exceededDailyQuotaDevices.has(deviceId))) {
         return true;
       }
     }

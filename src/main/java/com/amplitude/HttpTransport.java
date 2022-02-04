@@ -277,14 +277,12 @@ class HttpTransport {
       for (Event event : events) {
         if (!(response.isUserOrDeviceExceedQuote(event.userId, event.deviceId))) {
           eventsToRetry.add(event);
-        } else {
-          eventsToDrop.add(event);
           if (recordThrottledId) {
             try {
               JSONObject throttledUser =
-                  response.rateLimitBody.getJSONObject("exceededDailyQuotaUsers");
+                      response.rateLimitBody.getJSONObject("throttledUsers");
               JSONObject throttledDevice =
-                  response.rateLimitBody.getJSONObject("exceededDailyQuotaDevices");
+                      response.rateLimitBody.getJSONObject("throttledDevices");
               synchronized (throttleLock) {
                 if (throttledUser.has(event.userId)) {
                   throttledUserId.put(event.userId, throttledUser.getInt(event.userId));
@@ -297,6 +295,8 @@ class HttpTransport {
               logger.debug("THROTTLED", "Error get throttled userId or deviceId");
             }
           }
+        } else {
+          eventsToDrop.add(event);
         }
       }
       triggerEventCallbacks(eventsToDrop, response.code, "User or Device Exceed Daily Quota.");

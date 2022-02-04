@@ -340,16 +340,35 @@ public class AmplitudeTest {
   }
 
   @Test
-  public void testShouldWait() throws NoSuchFieldException, IllegalAccessException {
+  public void testShouldWait()
+      throws NoSuchFieldException, IllegalAccessException, AmplitudeInvalidAPIKeyException,
+          InterruptedException {
     Amplitude amplitude = Amplitude.getInstance();
     amplitude.init(apiKey);
     Event event = new Event("test event", "test-user-0");
     Event event2 = new Event("test event", "test-user-1");
+    HttpCall httpCall = getMockHttpCall(amplitude, false);
+    Response response = new Response();
+    response.status = Status.RATELIMIT;
+    response.code = 429;
+    response.rateLimitBody = new JSONObject();
+    response.rateLimitBody.put("throttledUsers", new JSONObject());
+    response.rateLimitBody.put("throttledDevices", new JSONObject());
+    response.rateLimitBody.put("exceededDailyQuotaDevices", new JSONObject());
+    response.rateLimitBody.put("exceededDailyQuotaUsers", new JSONObject());
+    response.rateLimitBody.getJSONObject("throttledUsers").put("test-user-0", 15);
+    response.rateLimitBody.put("throttledEvents", new int[] {0});
+    when(httpCall.makeRequest(anyList()))
+        .thenAnswer(
+            invocation -> {
+              return response;
+            });
     assertFalse(amplitude.shouldWait(event));
     Field httpTransportField = amplitude.getClass().getDeclaredField("httpTransport");
     httpTransportField.setAccessible(true);
     HttpTransport transport = (HttpTransport) httpTransportField.get(amplitude);
     amplitude.setRecordThrottledId(true);
+    assertFalse(amplitude.shouldWait(event));
     Field userIdMapField = transport.getClass().getDeclaredField("throttledUserId");
     Map<String, Integer> userMap = mock(HashMap.class);
     userIdMapField.setAccessible(true);
@@ -358,6 +377,9 @@ public class AmplitudeTest {
     when(userMap.containsKey("test-user-1")).thenReturn(false);
     assertTrue(amplitude.shouldWait(event));
     assertFalse(amplitude.shouldWait(event2));
+    transport.retryEvents(Arrays.asList(event, event2), response);
+    Thread.sleep(1000L);
+    verify(userMap, atLeast(1)).put(eq("test-user-0"), anyInt());
   }
 
   private HttpCall getMockHttpCall(Amplitude amplitude, boolean useBatch)
