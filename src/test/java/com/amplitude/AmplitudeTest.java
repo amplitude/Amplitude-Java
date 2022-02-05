@@ -352,7 +352,7 @@ public class AmplitudeTest {
     HttpCall httpCall = getMockHttpCall(amplitude, false);
     CyclicBarrier barrier = new CyclicBarrier(2);
     CountDownLatch latch = new CountDownLatch(1);
-    CountDownLatch callcakkLatch = new CountDownLatch(2);
+    CountDownLatch callbakkLatch = new CountDownLatch(2);
     Response response = new Response();
     response.status = Status.RATELIMIT;
     response.code = 429;
@@ -385,7 +385,7 @@ public class AmplitudeTest {
         new AmplitudeCallbacks() {
           @Override
           public void onLogEventServerResponse(Event event, int status, String message) {
-            callcakkLatch.countDown();
+            callbakkLatch.countDown();
           }
         });
     amplitude.logEvent(event);
@@ -395,7 +395,7 @@ public class AmplitudeTest {
     assertTrue(amplitude.shouldWait(event));
     assertFalse(amplitude.shouldWait(event2));
     barrier.await();
-    assertTrue(callcakkLatch.await(1L, TimeUnit.SECONDS));
+    assertTrue(callbakkLatch.await(1L, TimeUnit.SECONDS));
     assertFalse(amplitude.shouldWait(event));
     assertFalse(amplitude.shouldWait(event2));
   }
