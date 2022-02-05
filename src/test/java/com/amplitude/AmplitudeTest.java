@@ -352,6 +352,7 @@ public class AmplitudeTest {
     HttpCall httpCall = getMockHttpCall(amplitude, false);
     CyclicBarrier barrier = new CyclicBarrier(2);
     CountDownLatch latch = new CountDownLatch(1);
+    CountDownLatch callcakkLatch = new CountDownLatch(2);
     Response response = new Response();
     response.status = Status.RATELIMIT;
     response.code = 429;
@@ -369,21 +370,34 @@ public class AmplitudeTest {
             })
         .thenAnswer(
             invocation -> {
+              return response;
+            })
+        .thenAnswer(
+            invocation -> {
               latch.countDown();
               barrier.await();
               return response;
             });
     assertFalse(amplitude.shouldWait(event));
-    Field httpTransportField = amplitude.getClass().getDeclaredField("httpTransport");
-    httpTransportField.setAccessible(true);
-    HttpTransport transport = (HttpTransport) httpTransportField.get(amplitude);
     amplitude.setRecordThrottledId(true);
     assertFalse(amplitude.shouldWait(event));
-    transport.retryEvents(Arrays.asList(event, event2), response);
+    amplitude.setCallbacks(
+        new AmplitudeCallbacks() {
+          @Override
+          public void onLogEventServerResponse(Event event, int status, String message) {
+            callcakkLatch.countDown();
+          }
+        });
+    amplitude.logEvent(event);
+    amplitude.logEvent(event2);
+    amplitude.flushEvents();
     assertTrue(latch.await(1, TimeUnit.SECONDS));
     assertTrue(amplitude.shouldWait(event));
     assertFalse(amplitude.shouldWait(event2));
     barrier.await();
+    assertTrue(callcakkLatch.await(1L, TimeUnit.SECONDS));
+    assertFalse(amplitude.shouldWait(event));
+    assertFalse(amplitude.shouldWait(event2));
   }
 
   private HttpCall getMockHttpCall(Amplitude amplitude, boolean useBatch)
