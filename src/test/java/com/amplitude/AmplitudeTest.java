@@ -13,7 +13,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.lang.reflect.Field;
 import java.util.*;
+import java.util.concurrent.BrokenBarrierException;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
@@ -253,7 +255,8 @@ public class AmplitudeTest {
 
   @Test
   public void testMiddlewareSupport()
-      throws NoSuchFieldException, IllegalAccessException, AmplitudeInvalidAPIKeyException, InterruptedException {
+      throws NoSuchFieldException, IllegalAccessException, AmplitudeInvalidAPIKeyException,
+          InterruptedException {
     Amplitude amplitude = Amplitude.getInstance("testMiddlewareSupport");
     amplitude.init(apiKey);
     amplitude.useBatchMode(false);
@@ -274,18 +277,19 @@ public class AmplitudeTest {
     Map<String, Object> extraMap = new HashMap<>();
     extraMap.put("description", "extra description");
     MiddlewareExtra extra = new MiddlewareExtra(extraMap);
-    Middleware middleware = (payload, next) -> {
-      if (payload.event.eventProperties == null) {
-        payload.event.eventProperties = new JSONObject();
-      }
-      try {
-        payload.event.eventProperties.put("description", payload.extra.get("description"));
-      } catch (JSONException e) {
-        e.printStackTrace();
-      }
+    Middleware middleware =
+        (payload, next) -> {
+          if (payload.event.eventProperties == null) {
+            payload.event.eventProperties = new JSONObject();
+          }
+          try {
+            payload.event.eventProperties.put("description", payload.extra.get("description"));
+          } catch (JSONException e) {
+            e.printStackTrace();
+          }
 
-      next.run(payload);
-    };
+          next.run(payload);
+        };
     amplitude.addEventMiddleware(middleware);
     amplitude.logEvent(new Event("middleware_event_type", "middleware_user"), extra);
 
@@ -300,7 +304,8 @@ public class AmplitudeTest {
 
   @Test
   public void testWithSwallowMiddleware()
-      throws NoSuchFieldException, IllegalAccessException, AmplitudeInvalidAPIKeyException, InterruptedException {
+      throws NoSuchFieldException, IllegalAccessException, AmplitudeInvalidAPIKeyException,
+          InterruptedException {
     Amplitude amplitude = Amplitude.getInstance("testWithSwallowMiddleware");
     amplitude.init(apiKey);
     amplitude.useBatchMode(false);
@@ -318,11 +323,12 @@ public class AmplitudeTest {
               return response;
             });
 
-    Middleware middleware = (payload, next) -> {
-      if (payload.event.userId.equals("middleware_user_2")) {
-        next.run(payload);
-      }
-    };
+    Middleware middleware =
+        (payload, next) -> {
+          if (payload.event.userId.equals("middleware_user_2")) {
+            next.run(payload);
+          }
+        };
     amplitude.addEventMiddleware(middleware);
     amplitude.logEvent(new Event("middleware_event_type", "middleware_user_1"));
     amplitude.logEvent(new Event("middleware_event_type", "middleware_user_2"));
@@ -333,6 +339,65 @@ public class AmplitudeTest {
     Event sentEvent = sentEvents.get().get(0);
     assertEquals("middleware_event_type", sentEvent.eventType);
     assertEquals("middleware_user_2", sentEvent.userId);
+  }
+
+  @Test
+  public void testShouldWait()
+      throws NoSuchFieldException, IllegalAccessException, AmplitudeInvalidAPIKeyException,
+          InterruptedException, BrokenBarrierException {
+    Amplitude amplitude = Amplitude.getInstance();
+    amplitude.init(apiKey);
+    Event event = new Event("test event", "test-user-0");
+    Event event2 = new Event("test event", "test-user-1");
+    HttpCall httpCall = getMockHttpCall(amplitude, false);
+    CyclicBarrier barrier = new CyclicBarrier(2);
+    CountDownLatch latch = new CountDownLatch(1);
+    CountDownLatch callbakkLatch = new CountDownLatch(2);
+    Response response = new Response();
+    response.status = Status.RATELIMIT;
+    response.code = 429;
+    response.rateLimitBody = new JSONObject();
+    response.rateLimitBody.put("throttledUsers", new JSONObject());
+    response.rateLimitBody.put("throttledDevices", new JSONObject());
+    response.rateLimitBody.put("exceededDailyQuotaDevices", new JSONObject());
+    response.rateLimitBody.put("exceededDailyQuotaUsers", new JSONObject());
+    response.rateLimitBody.getJSONObject("throttledUsers").put("test-user-0", 15);
+    response.rateLimitBody.put("throttledEvents", new int[] {0});
+    when(httpCall.makeRequest(anyList()))
+        .thenAnswer(
+            invocation -> {
+              return response;
+            })
+        .thenAnswer(
+            invocation -> {
+              return response;
+            })
+        .thenAnswer(
+            invocation -> {
+              latch.countDown();
+              barrier.await();
+              return response;
+            });
+    assertFalse(amplitude.shouldWait(event));
+    amplitude.setRecordThrottledId(true);
+    assertFalse(amplitude.shouldWait(event));
+    amplitude.setCallbacks(
+        new AmplitudeCallbacks() {
+          @Override
+          public void onLogEventServerResponse(Event event, int status, String message) {
+            callbakkLatch.countDown();
+          }
+        });
+    amplitude.logEvent(event);
+    amplitude.logEvent(event2);
+    amplitude.flushEvents();
+    assertTrue(latch.await(1, TimeUnit.SECONDS));
+    assertTrue(amplitude.shouldWait(event));
+    assertFalse(amplitude.shouldWait(event2));
+    barrier.await();
+    assertTrue(callbakkLatch.await(1L, TimeUnit.SECONDS));
+    assertFalse(amplitude.shouldWait(event));
+    assertFalse(amplitude.shouldWait(event2));
   }
 
   private HttpCall getMockHttpCall(Amplitude amplitude, boolean useBatch)
