@@ -122,23 +122,23 @@ class HttpTransport {
         addEventToBuffer(userId, deviceId, event);
       }
     }
-      Set<String> users;
+    Set<String> users;
+    synchronized (bufferLock) {
+      users = new HashSet<>(idToBuffer.keySet());
+    }
+    for (String userId : users) {
+      Set<String> devices;
       synchronized (bufferLock) {
-          users = new HashSet<>(idToBuffer.keySet());
+        devices = new HashSet<>(idToBuffer.get(userId).keySet());
       }
-      for (String userId : users) {
-          Set<String> devices;
-          synchronized (bufferLock) {
-              devices = new HashSet<>(idToBuffer.get(userId).keySet());
-          }
-          for (String deviceId : devices) {
-              try {
-                  retryThreadPool.submit(new RetryEventsOnLoop(userId, deviceId));
-              } catch (RejectedExecutionException e) {
-                  logger.warn("Failed init retry thread", e.getMessage());
-              }
-          }
+      for (String deviceId : devices) {
+        try {
+          retryThreadPool.submit(new RetryEventsOnLoop(userId, deviceId));
+        } catch (RejectedExecutionException e) {
+          logger.warn("Failed init retry thread", e.getMessage());
+        }
       }
+    }
   }
 
   private EventsRetryResult retryEventsOnce(String userId, String deviceId, List<Event> events)
@@ -218,16 +218,13 @@ class HttpTransport {
       }
     } else if (response.status == Status.RATELIMIT && response.rateLimitBody != null) {
       eventsToRetry = new ArrayList<>();
-
       for (Event event : events) {
         if (!(response.isUserOrDeviceExceedQuote(event.userId, event.deviceId))) {
           eventsToRetry.add(event);
           if (recordThrottledId) {
             try {
-              JSONObject throttledUser =
-                      response.rateLimitBody.getJSONObject("throttledUsers");
-              JSONObject throttledDevice =
-                      response.rateLimitBody.getJSONObject("throttledDevices");
+              JSONObject throttledUser = response.rateLimitBody.getJSONObject("throttledUsers");
+              JSONObject throttledDevice = response.rateLimitBody.getJSONObject("throttledDevices");
               synchronized (throttleLock) {
                 if (throttledUser.has(event.userId)) {
                   throttledUserId.put(event.userId, throttledUser.getInt(event.userId));
@@ -272,37 +269,37 @@ class HttpTransport {
     }
   }
 
-    private void addEventToBuffer(String userId, String deviceId, Event event) {
-        synchronized (bufferLock) {
-            if (!idToBuffer.containsKey(userId)) {
-                idToBuffer.put(userId, new HashMap<>());
-            }
-            if (!idToBuffer.get(userId).containsKey(deviceId)) {
-                idToBuffer.get(userId).put(deviceId, new ArrayList<>());
-            }
-            idToBuffer.get(userId).get(deviceId).add(event);
-        }
-        synchronized (counterLock) {
-            eventsInRetry++;
-        }
+  private void addEventToBuffer(String userId, String deviceId, Event event) {
+    synchronized (bufferLock) {
+      if (!idToBuffer.containsKey(userId)) {
+        idToBuffer.put(userId, new HashMap<>());
+      }
+      if (!idToBuffer.get(userId).containsKey(deviceId)) {
+        idToBuffer.get(userId).put(deviceId, new ArrayList<>());
+      }
+      idToBuffer.get(userId).get(deviceId).add(event);
     }
+    synchronized (counterLock) {
+      eventsInRetry++;
+    }
+  }
 
-    private List<Event> getEventsFromBuffer(String userId, String deviceId) {
-        synchronized (bufferLock) {
-            if (idToBuffer.containsKey(userId) && idToBuffer.get(userId).containsKey(deviceId)) {
-                List<Event> events = idToBuffer.get(userId).remove(deviceId);
-                if (idToBuffer.get(userId).isEmpty()) {
-                    idToBuffer.remove(userId);
-                }
-                return events;
-            }
+  private List<Event> getEventsFromBuffer(String userId, String deviceId) {
+    synchronized (bufferLock) {
+      if (idToBuffer.containsKey(userId) && idToBuffer.get(userId).containsKey(deviceId)) {
+        List<Event> events = idToBuffer.get(userId).remove(deviceId);
+        if (idToBuffer.get(userId).isEmpty()) {
+          idToBuffer.remove(userId);
         }
-        return null;
+        return events;
+      }
     }
+    return null;
+  }
 
   public boolean shouldWait(Event event) {
     if (recordThrottledId
-            && (throttledUserId.containsKey(event.userId)
+        && (throttledUserId.containsKey(event.userId)
             || throttledDeviceId.containsKey(event.deviceId))) {
       return true;
     }
@@ -313,70 +310,78 @@ class HttpTransport {
     recordThrottledId = record;
   }
 
-    class RetryEventsOnLoop implements Runnable {
-        private String userId;
-        private String deviceId;
+  class RetryEventsOnLoop implements Runnable {
+    private String userId;
+    private String deviceId;
 
-        RetryEventsOnLoop(String userId, String deviceId) {
-            this.deviceId = deviceId;
-            this.userId = userId;
-        }
-
-        @Override
-        public void run() {
-            List<Event> eventsBuffer = getEventsFromBuffer(userId, deviceId);
-            if (eventsBuffer == null || eventsBuffer.size() == 0) {
-                return;
-            }
-            synchronized (counterLock) {
-                eventsInRetry -= eventsBuffer.size();
-            }
-            int retryTimes = Constants.RETRY_TIMEOUTS.length;
-            for (int numRetries = 0; numRetries < retryTimes; numRetries++) {
-                int eventCount = eventsBuffer.size();
-                if (eventCount <= 0) {
-                    break;
-                }
-                long sleepDuration = Constants.RETRY_TIMEOUTS[numRetries];
-                try {
-                    Thread.sleep(sleepDuration);
-                    boolean isLastTry = numRetries == retryTimes - 1;
-                    EventsRetryResult retryResult = retryEventsOnce(userId, deviceId, eventsBuffer);
-                    boolean shouldRetry = retryResult.shouldRetry;
-                    if (!shouldRetry) {
-                        // call back done in retryEventsOnce
-                        break;
-                    } else if (isLastTry) {
-                        triggerEventCallbacks(eventsBuffer, retryResult.statusCode, "Event retries exhausted.");
-                        break;
-                    }
-                    boolean shouldReduceEventCount = retryResult.shouldReduceEventCount;
-                    int[] eventIndicesToRemove = retryResult.eventIndicesToRemove;
-                    if (eventIndicesToRemove.length > 0) {
-                        List<Event> eventsToDrop = new ArrayList<>();
-                        int numEventsRemoved = 0;
-                        for (int i = eventIndicesToRemove.length - 1; i >= 0; i--) {
-                            int index = eventIndicesToRemove[i];
-                            if (index < eventCount) {
-                                eventsToDrop.add(eventsBuffer.remove(index));
-                                numEventsRemoved += 1;
-                            }
-                        }
-                        triggerEventCallbacks(eventsToDrop, retryResult.statusCode, "Invalid events.");
-                    } else if (shouldReduceEventCount) {
-                        List<Event> eventsToDrop = eventsBuffer.subList(eventCount / 2, eventCount);
-                        triggerEventCallbacks(eventsToDrop, retryResult.statusCode, "Event dropped for retry");
-                        eventsBuffer = eventsBuffer.subList(0, eventCount / 2);
-                    }
-
-                } catch (InterruptedException | AmplitudeInvalidAPIKeyException e) {
-                    // The retry logic should only be executed after the API key checking passed.
-                    // This catch AmplitudeInvalidAPIKeyException is just for handling
-                    // retryEventsOnce in thread.
-                    logger.debug("RETRY", "Retry thread got interrupted");
-                    Thread.currentThread().interrupt();
-                }
-            }
-        }
+    RetryEventsOnLoop(String userId, String deviceId) {
+      this.deviceId = deviceId;
+      this.userId = userId;
     }
+
+    @Override
+    public void run() {
+      List<Event> eventsBuffer = getEventsFromBuffer(userId, deviceId);
+      if (eventsBuffer == null || eventsBuffer.size() == 0) {
+        return;
+      }
+      synchronized (counterLock) {
+        eventsInRetry -= eventsBuffer.size();
+      }
+      int retryTimes = Constants.RETRY_TIMEOUTS.length;
+      for (int numRetries = 0; numRetries < retryTimes; numRetries++) {
+        int eventCount = eventsBuffer.size();
+        if (eventCount <= 0) {
+          break;
+        }
+        long sleepDuration = Constants.RETRY_TIMEOUTS[numRetries];
+        try {
+          Thread.sleep(sleepDuration);
+          boolean isLastTry = numRetries == retryTimes - 1;
+          EventsRetryResult retryResult = retryEventsOnce(userId, deviceId, eventsBuffer);
+          boolean shouldRetry = retryResult.shouldRetry;
+          if (!shouldRetry) {
+            // call back done in retryEventsOnce
+            break;
+          } else if (isLastTry) {
+            triggerEventCallbacks(eventsBuffer, retryResult.statusCode, "Event retries exhausted.");
+            break;
+          }
+          boolean shouldReduceEventCount = retryResult.shouldReduceEventCount;
+          int[] eventIndicesToRemove = retryResult.eventIndicesToRemove;
+          if (eventIndicesToRemove.length > 0) {
+            List<Event> eventsToDrop = new ArrayList<>();
+            for (int i = eventIndicesToRemove.length - 1; i >= 0; i--) {
+              int index = eventIndicesToRemove[i];
+              if (index < eventCount) {
+                eventsToDrop.add(eventsBuffer.remove(index));
+              }
+            }
+            triggerEventCallbacks(eventsToDrop, retryResult.statusCode, "Invalid events.");
+          } else if (shouldReduceEventCount) {
+            List<Event> eventsToDrop = eventsBuffer.subList(eventCount / 2, eventCount);
+            triggerEventCallbacks(eventsToDrop, retryResult.statusCode, "Event dropped for retry");
+            eventsBuffer = eventsBuffer.subList(0, eventCount / 2);
+          }
+
+        } catch (InterruptedException | AmplitudeInvalidAPIKeyException e) {
+          // The retry logic should only be executed after the API key checking passed.
+          // This catch AmplitudeInvalidAPIKeyException is just for handling
+          // retryEventsOnce in thread.
+          logger.debug("RETRY", "Retry thread got interrupted");
+          Thread.currentThread().interrupt();
+        }
+      }
+      if (recordThrottledId) {
+        synchronized (throttleLock) {
+          if (throttledUserId.containsKey(userId)) {
+            throttledUserId.remove(userId);
+          }
+          if (throttledDeviceId.containsKey(deviceId)) {
+            throttledDeviceId.remove(deviceId);
+          }
+        }
+      }
+    }
+  }
 }
