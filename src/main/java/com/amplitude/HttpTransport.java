@@ -78,7 +78,7 @@ class HttpTransport {
       if (eventsInRetry.get() < Constants.MAX_CACHED_EVENTS) {
           onEventsError(events, response);
       } else {
-          String message = "Retry buffer is full, events dropped.";
+          String message = "Retry buffer is full(" + eventsInRetry.get() + "), " + events.size() + " events dropped.";
           logger.warn("DROP EVENTS", message);
           triggerEventCallbacks(events, response.code, message);
       }
