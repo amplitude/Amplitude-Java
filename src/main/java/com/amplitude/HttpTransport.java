@@ -133,7 +133,7 @@ class HttpTransport {
       }
       for (String deviceId : devices) {
         try {
-          retryThreadPool.submit(new RetryEventsOnLoop(userId, deviceId));
+          retryThreadPool.execute(new RetryEventsOnLoop(userId, deviceId));
         } catch (RejectedExecutionException e) {
           logger.warn("Failed init retry thread", e.getMessage());
         }
@@ -189,24 +189,19 @@ class HttpTransport {
   }
 
   private List<Event> getEventListToRetry(List<Event> events, Response response) {
-    List<Event> eventsToRetry = events;
+    List<Event> eventsToRetry = new ArrayList<>();
     List<Event> eventsToDrop = new ArrayList<>();
     // Filter invalid event out based on the response code.
-    if (response.status == Status.SUCCESS) {
-      return new ArrayList<>();
-    } else if (response.status == Status.INVALID) {
-      if ((response.invalidRequestBody != null
-              && response.invalidRequestBody.has("missingField")
+    if (response.status == Status.INVALID && response.invalidRequestBody != null) {
+      if ((response.invalidRequestBody.has("missingField")
               && response.invalidRequestBody.getString("missingField").length() > 0)
           || events.size() == 1) {
         // Return early if there's an issue with the entire payload
         // or if there's only one event and its invalid
-        triggerEventCallbacks(events, response.code, response.error);
-        return new ArrayList<>();
-      } else if (response.invalidRequestBody != null) {
+        eventsToDrop = events;
+      } else {
         // Filter out invalid events id  vv v
         int[] invalidEventIndices = response.collectInvalidEventIndices();
-        eventsToRetry = new ArrayList<>();
         for (int i = 0; i < events.size(); i++) {
           if (Arrays.binarySearch(invalidEventIndices, i) < 0) {
             eventsToRetry.add(events.get(i));
@@ -214,10 +209,8 @@ class HttpTransport {
             eventsToDrop.add(events.get(i));
           }
         }
-        triggerEventCallbacks(eventsToDrop, response.code, response.error);
       }
     } else if (response.status == Status.RATELIMIT && response.rateLimitBody != null) {
-      eventsToRetry = new ArrayList<>();
       for (Event event : events) {
         if (!(response.isUserOrDeviceExceedQuote(event.userId, event.deviceId))) {
           eventsToRetry.add(event);
@@ -241,8 +234,10 @@ class HttpTransport {
           eventsToDrop.add(event);
         }
       }
-      triggerEventCallbacks(eventsToDrop, response.code, "User or Device Exceed Daily Quota.");
+    } else {
+      eventsToRetry = events;
     }
+    triggerEventCallbacks(eventsToDrop, response.code, response.error);
     return eventsToRetry;
   }
 
