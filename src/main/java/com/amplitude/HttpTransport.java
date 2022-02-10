@@ -374,12 +374,8 @@ class HttpTransport {
       }
       if (recordThrottledId) {
         synchronized (throttleLock) {
-          if (throttledUserId.containsKey(userId)) {
-            throttledUserId.remove(userId);
-          }
-          if (throttledDeviceId.containsKey(deviceId)) {
-            throttledDeviceId.remove(deviceId);
-          }
+          throttledUserId.remove(userId);
+          throttledDeviceId.remove(deviceId);
         }
       }
     }
