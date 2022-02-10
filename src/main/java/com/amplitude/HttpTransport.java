@@ -75,10 +75,13 @@ class HttpTransport {
 
   // The main entrance for the retry logic.
   public void retryEvents(List<Event> events, Response response) {
-    List<Event> eventsToSend = pruneEvent(events);
-    if (eventsInRetry.intValue() < Constants.MAX_CACHED_EVENTS) {
-      onEventsError(eventsToSend, response);
-    }
+      if (eventsInRetry.get() < Constants.MAX_CACHED_EVENTS) {
+          onEventsError(events, response);
+      } else {
+          String message = "Retry buffer is full(" + eventsInRetry.get() + "), " + events.size() + " events dropped.";
+          logger.warn("DROP EVENTS", message);
+          triggerEventCallbacks(events, response.code, message);
+      }
   }
 
   public void setHttpCall(HttpCall httpCall) {
@@ -227,6 +230,7 @@ class HttpTransport {
         break;
       case PAYLOAD_TOO_LARGE:
         shouldRetry = true;
+        shouldReduceEventCount = true;
         break;
       case INVALID:
         if (events.size() == 1) {
@@ -235,6 +239,14 @@ class HttpTransport {
         } else {
           eventIndicesToRemove = response.collectInvalidEventIndices();
         }
+        break;
+      case UNKNOWN:
+        shouldRetry = false;
+        triggerEventCallbacks(events, response.code, "Unknown response status.");
+        break;
+      case FAILED:
+        shouldRetry = false;
+        triggerEventCallbacks(events, response.code, "Event sent Failed.");
         break;
       default:
         break;
@@ -304,40 +316,6 @@ class HttpTransport {
     return eventsToRetry;
   }
 
-  private List<Event> pruneEvent(List<Event> events) {
-    List<Event> prunedEvents = new ArrayList<>();
-    // If we already have the key value pair for the current event in idToBuffer,
-    // We just add into the events list and deal with it later otherwise we should add it to
-    // prunedEvents and return.
-    for (Event event : events) {
-      String userId = event.userId;
-      String deviceId = event.deviceId;
-      if ((userId != null && userId.length() > 0) || (deviceId != null && deviceId.length() > 0)) {
-        idToBuffer.compute(
-            userId,
-            (key, value) -> {
-              if (value == null) {
-                prunedEvents.add(event);
-                return null;
-              }
-              value.compute(
-                  deviceId,
-                  (deviceKey, deviceValue) -> {
-                    if (deviceValue == null) {
-                      prunedEvents.add(event);
-                      return null;
-                    }
-                    deviceValue.add(event);
-                    eventsInRetry.incrementAndGet();
-                    return deviceValue;
-                  });
-              return value;
-            });
-      }
-    }
-    return prunedEvents;
-  }
-
   // Cleans up the id in the buffer map if the job is done
   private void cleanUpBuffer(String userId) {
     idToBuffer.computeIfPresent(
@@ -381,6 +359,7 @@ class HttpTransport {
                   deviceValue = new ConcurrentLinkedQueue<>();
                 }
                 deviceValue.add(event);
+                eventsInRetry.incrementAndGet();
                 return deviceValue;
               });
           return value;
