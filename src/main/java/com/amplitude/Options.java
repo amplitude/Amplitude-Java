@@ -36,7 +36,7 @@ public class Options {
         return this;
     }
 
-    public JSONObject getEventPayloadJson() {
+    public JSONObject toJsonObject() {
         JSONObject eventOptions = new JSONObject();
         try {
             if (minIdLength != null) eventOptions.put("min_id_length", minIdLength);

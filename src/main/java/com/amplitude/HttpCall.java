@@ -50,7 +50,7 @@ public class HttpCall {
 
       JSONObject bodyJson = new JSONObject();
       bodyJson.put("api_key", this.apiKey);
-      if(options != null) bodyJson.put("options", options.getEventPayloadJson());
+      if(options != null) bodyJson.put("options", options.toJsonObject());
 
       JSONArray eventsArr = new JSONArray();
       for (int i = 0; i < events.size(); i++) {
