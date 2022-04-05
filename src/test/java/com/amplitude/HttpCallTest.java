@@ -50,11 +50,8 @@ public class HttpCallTest {
     int eventsIngested = 10;
     int payloadSizeBytes = 10;
     long serverUploadTime = 1396381378123L;
-    JSONObject responseObject = new JSONObject();
-    responseObject.put("code", 200);
-    responseObject.put("events_ingested", eventsIngested);
-    responseObject.put("payload_size_bytes", payloadSizeBytes);
-    responseObject.put("server_upload_time", serverUploadTime);
+    JSONObject responseObject = getMockResponse(200, eventsIngested, payloadSizeBytes, serverUploadTime);
+
     HttpsURLConnection connection =
         MockHttpsURLConnectionHelper.getMockHttpsURLConnection(200, responseObject.toString());
     mockURLStreamHandler.setConnection(url, connection);
@@ -221,6 +218,33 @@ public class HttpCallTest {
     verifyConnectionOption(connection);
   }
 
+  @ParameterizedTest
+  @MethodSource("httpCallArguments")
+  public void testHttpCallWithCustomHeaders(HttpCallMode httpCallMode, URL url)
+          throws IOException, AmplitudeInvalidAPIKeyException {
+    int payloadSizeBytes = 10;
+    long serverUploadTime = 1396381378123L;
+
+    String customHeaderKey = "My Custom Header";
+    String customHeaderValue = "My Custom Header Value";
+    Options options = new Options();
+    options.addHeader(customHeaderKey, customHeaderValue);
+
+    JSONObject responseObject = getMockResponse(200, 1, payloadSizeBytes, serverUploadTime);
+    HttpsURLConnection connection =
+            MockHttpsURLConnectionHelper.getMockHttpsURLConnection(200, responseObject.toString());
+    mockURLStreamHandler.setConnection(url, connection);
+    HttpCall httpCall = getHttpCallFromCallMode(httpCallMode, options);
+    List<Event> events = EventsGenerator.generateEvents(1);
+
+    Response response = httpCall.makeRequest(events);
+
+    assertEquals(200, response.code);
+    assertEquals(Status.SUCCESS, response.status);
+    verifyConnectionOption(connection);
+    verify(connection, times(1)).setRequestProperty(customHeaderKey, customHeaderValue);
+  }
+
   static Stream<Arguments> httpCallArguments() {
     return Stream.of(
         arguments(HttpCallMode.REGULAR, Constants.API_URL),
@@ -228,7 +252,15 @@ public class HttpCallTest {
   }
 
   private HttpCall getHttpCallFromCallMode(HttpCallMode httpCallMode) {
-    return new HttpCall(apiKey, httpCallMode == HttpCallMode.BATCH ? Constants.BATCH_API_URL : Constants.API_URL);
+    return getHttpCallFromCallMode(httpCallMode, null);
+  }
+
+  private HttpCall getHttpCallFromCallMode(HttpCallMode httpCallMode, Options options) {
+    return new HttpCall(
+            apiKey,
+            httpCallMode == HttpCallMode.BATCH ? Constants.BATCH_API_URL : Constants.API_URL,
+            options
+    );
   }
 
   private void verifyConnectionOption(HttpsURLConnection connection) throws ProtocolException {
@@ -237,5 +269,17 @@ public class HttpCallTest {
     verify(connection, times(1)).setConnectTimeout(Constants.NETWORK_TIMEOUT_MILLIS);
     verify(connection, times(1)).setReadTimeout(Constants.NETWORK_TIMEOUT_MILLIS);
     verify(connection, times(1)).setDoOutput(true);
+  }
+
+  private JSONObject getMockResponse(
+          int code, int eventsIngested, long payloadSizeBytes, long serverUploadTime
+  ) {
+    JSONObject responseObject = new JSONObject();
+    responseObject.put("code", code);
+    responseObject.put("events_ingested", eventsIngested);
+    responseObject.put("payload_size_bytes", payloadSizeBytes);
+    responseObject.put("server_upload_time", serverUploadTime);
+
+    return responseObject;
   }
 }

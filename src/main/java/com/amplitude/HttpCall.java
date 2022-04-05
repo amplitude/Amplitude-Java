@@ -44,6 +44,10 @@ public class HttpCall {
       connection.setReadTimeout(Constants.NETWORK_TIMEOUT_MILLIS);
       connection.setDoOutput(true);
 
+      if (this.options != null && this.options.headers != null && !this.options.headers.isEmpty()) {
+        this.options.headers.forEach(connection::setRequestProperty);
+      }
+
       JSONObject bodyJson = new JSONObject();
       bodyJson.put("api_key", this.apiKey);
       if(options != null) bodyJson.put("options", options.toJsonObject());
