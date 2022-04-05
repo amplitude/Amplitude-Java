@@ -1,12 +1,8 @@
 package com.demo.amplitude;
 
+import com.amplitude.*;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.RequestMapping;
-
-import com.amplitude.Amplitude;
-import com.amplitude.AmplitudeCallbacks;
-import com.amplitude.AmplitudeLog;
-import com.amplitude.Event;
 
 @RestController
 public class DemoController {
@@ -26,6 +22,10 @@ public class DemoController {
           }
         };
     amplitude.setCallbacks(callbacks);
+    // Set custom headers or minIdLength via Options
+    amplitude.setOptions(new Options()
+            .addHeader("Custom Header", "value")
+            .setMinIdLength(5));
     amplitude.logEvent(new Event("Test Event", "test_user_id"));
     amplitude.logEvent(
         new Event("Test Event with Callback", "test_user_id"),
