@@ -44,7 +44,7 @@ public class HttpCall {
       connection.setReadTimeout(Constants.NETWORK_TIMEOUT_MILLIS);
       connection.setDoOutput(true);
 
-      if (this.options.headers != null && !this.options.headers.isEmpty()) {
+      if (this.options != null && this.options.headers != null && !this.options.headers.isEmpty()) {
         this.options.headers.forEach(connection::setRequestProperty);
       }
 
