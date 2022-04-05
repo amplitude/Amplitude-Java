@@ -50,7 +50,7 @@ public class HttpCallTest {
     int eventsIngested = 10;
     int payloadSizeBytes = 10;
     long serverUploadTime = 1396381378123L;
-    var responseObject = getMockResponse(200, eventsIngested, payloadSizeBytes, serverUploadTime);
+    JSONObject responseObject = getMockResponse(200, eventsIngested, payloadSizeBytes, serverUploadTime);
 
     HttpsURLConnection connection =
         MockHttpsURLConnectionHelper.getMockHttpsURLConnection(200, responseObject.toString());
@@ -227,10 +227,10 @@ public class HttpCallTest {
 
     String customHeaderKey = "My Custom Header";
     String customHeaderValue = "My Custom Header Value";
-    var options = new Options();
+    Options options = new Options();
     options.addHeader(customHeaderKey, customHeaderValue);
 
-    var responseObject = getMockResponse(200, 1, payloadSizeBytes, serverUploadTime);
+    JSONObject responseObject = getMockResponse(200, 1, payloadSizeBytes, serverUploadTime);
     HttpsURLConnection connection =
             MockHttpsURLConnectionHelper.getMockHttpsURLConnection(200, responseObject.toString());
     mockURLStreamHandler.setConnection(url, connection);
