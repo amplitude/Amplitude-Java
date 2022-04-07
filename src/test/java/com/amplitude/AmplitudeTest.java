@@ -400,6 +400,49 @@ public class AmplitudeTest {
     assertFalse(amplitude.shouldWait(event2));
   }
 
+  @Test
+  public void testSetPlan() throws NoSuchFieldException, IllegalAccessException, AmplitudeInvalidAPIKeyException, InterruptedException {
+    Amplitude amplitude = Amplitude.getInstance("testSetPlan");
+    amplitude.init(apiKey);
+
+    String branch = "main";
+    String source = "jre-java";
+    String version = "1.0.0";
+    String versionId = "9ec23ba0-275f-468f-80d1-66b88bff9529";
+
+    Plan plan = new Plan().setBranch(branch).setSource(source).setVersion(version).setVersionId(versionId);
+    amplitude.setPlan(plan);
+
+    amplitude.useBatchMode(false);
+    amplitude.setEventUploadThreshold(1);
+    HttpCall httpCall = getMockHttpCall(amplitude, false);
+    Response response = ResponseUtil.getSuccessResponse();
+    CountDownLatch latch = new CountDownLatch(1);
+
+    AtomicReference<List<Event>> sentEvents = new AtomicReference<>();
+    when(httpCall.makeRequest(anyList()))
+        .thenAnswer(
+            invocation -> {
+              sentEvents.set(invocation.getArgument(0));
+              latch.countDown();
+              return response;
+            });
+
+    amplitude.logEvent(new Event("test-event", "test-user"));
+
+    assertTrue(latch.await(1L, TimeUnit.SECONDS));
+    assertEquals(1, sentEvents.get().size());
+
+    Event sentEvent = sentEvents.get().get(0);
+    assertNotNull(sentEvent.plan);
+
+    JSONObject result = sentEvent.plan.toJSONObject();
+    assertEquals(branch, result.getString(Constants.AMP_PLAN_BRANCH));
+    assertEquals(source, result.getString(Constants.AMP_PLAN_SOURCE));
+    assertEquals(version, result.getString(Constants.AMP_PLAN_VERSION));
+    assertEquals(versionId, result.getString(Constants.AMP_PLAN_VERSION_ID));
+  }
+
   private HttpCall getMockHttpCall(Amplitude amplitude, boolean useBatch)
       throws NoSuchFieldException, IllegalAccessException {
     HttpCall httpCall = mock(HttpCall.class);

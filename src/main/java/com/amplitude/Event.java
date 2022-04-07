@@ -173,6 +173,11 @@ public class Event {
   public JSONObject groupProperties;
 
   /**
+   * The tracking plan.
+   */
+  public Plan plan;
+
+  /**
    * Callback for Event
    */
   protected AmplitudeCallbacks callback;
@@ -262,6 +267,10 @@ public class Event {
       event.put(
           "group_properties",
           (groupProperties == null) ? new JSONObject() : truncate(groupProperties));
+
+      if (plan != null) {
+        event.put("plan", plan.toJSONObject());
+      }
     } catch (JSONException e) {
       e.printStackTrace();
     }

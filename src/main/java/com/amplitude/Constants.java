@@ -18,4 +18,9 @@ public interface Constants {
 
   long[] RETRY_TIMEOUTS = { 100, 100, 200, 200, 400, 400, 800, 800, 1600, 1600, 3200, 3200 };
   int MAX_CACHED_EVENTS = 16000;
+
+  String AMP_PLAN_BRANCH = "branch";
+  String AMP_PLAN_SOURCE = "source";
+  String AMP_PLAN_VERSION = "version";
+  String AMP_PLAN_VERSION_ID = "versionId";
 }
