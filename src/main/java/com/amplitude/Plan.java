@@ -63,6 +63,7 @@ public class Plan {
      */
     public Plan setVersionId(String versionId) {
         this.versionId = versionId;
+        this.jsonPlan = null;
         return this;
     }
 
