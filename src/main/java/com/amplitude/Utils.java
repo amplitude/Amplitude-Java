@@ -28,4 +28,8 @@ public class Utils {
       return jsonArrayToIntArray(jsonArray);
     }
   }
+
+  public static boolean isEmptyString(String s) {
+    return (s == null || s.length() == 0);
+  }
 }

@@ -19,6 +19,7 @@ public class Amplitude {
   private int eventUploadThreshold = Constants.EVENT_BUF_COUNT;
   private int eventUploadPeriodMillis = Constants.EVENT_BUF_TIME_MILLIS;
   private Object eventQueueLock = new Object();
+  private Plan plan;
 
   /**
    * A dictionary of key-value pairs that represent additional instructions for server save operation.
@@ -146,6 +147,16 @@ public class Amplitude {
   }
 
   /**
+   * Set tracking plan information.
+   *
+   * @param plan Plan object
+   */
+  public Amplitude setPlan(Plan plan) {
+    this.plan = plan;
+    return this;
+  }
+
+  /**
    * Add middleware to the middleware runner
    */
   public synchronized void addEventMiddleware(Middleware middleware) {
@@ -189,6 +200,10 @@ public class Amplitude {
    * @param extra The extra unstructured data for middleware
    */
   public void logEvent(Event event, AmplitudeCallbacks callbacks, MiddlewareExtra extra) {
+    if (event.plan == null) {
+      event.plan = this.plan;
+    }
+
     if (!middlewareRunner.run(new MiddlewarePayload(event, extra))) {
       return;
     }
