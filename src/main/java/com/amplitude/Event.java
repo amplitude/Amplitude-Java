@@ -48,6 +48,9 @@ public class Event {
   /** The name of the mobile operating system or browser that the user is using. */
   public String osName;
 
+  /** The version of the mobile operating system or browser the user is using. */
+  public String osVersion;
+
   /** The device brand that the user is using. */
   public String deviceBrand;
 
@@ -229,6 +232,7 @@ public class Event {
       event.put("library", Constants.SDK_LIBRARY + "/" + Constants.SDK_VERSION);
       event.put("platform", replaceWithJSONNull(platform));
       event.put("os_name", replaceWithJSONNull(osName));
+      event.put("os_version", replaceWithJSONNull(osVersion));
       event.put("device_brand", replaceWithJSONNull(deviceBrand));
       event.put("device_manufacturer", replaceWithJSONNull(deviceManufacturer));
       event.put("device_model", replaceWithJSONNull(deviceModel));
