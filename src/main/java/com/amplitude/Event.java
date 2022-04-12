@@ -90,6 +90,9 @@ public class Event {
   /** The (human) language set by the user. */
   public String language;
 
+  /** The partner id of event*/
+  public String partnerId;
+
   /**
    * The IP address of the user. Use "$remote" to use the IP address on the upload request. We will
    * use the IP address to reverse lookup a user's location (city, country, region, and DMA).
@@ -246,6 +249,7 @@ public class Event {
       event.put("adid", replaceWithJSONNull(adid));
       event.put("android_id", replaceWithJSONNull(androidId));
       event.put("language", replaceWithJSONNull(language));
+      event.put("partner_id", replaceWithJSONNull(partnerId));
       event.put("ip", replaceWithJSONNull(ip));
       event.put(
           "event_properties",
