@@ -48,6 +48,9 @@ public class Event {
   /** The name of the mobile operating system or browser that the user is using. */
   public String osName;
 
+  /** The version of the mobile operating system or browser the user is using. */
+  public String osVersion;
+
   /** The device brand that the user is using. */
   public String deviceBrand;
 
@@ -86,6 +89,9 @@ public class Event {
 
   /** The (human) language set by the user. */
   public String language;
+
+  /** The partner id of event*/
+  public String partnerId;
 
   /**
    * The IP address of the user. Use "$remote" to use the IP address on the upload request. We will
@@ -229,6 +235,7 @@ public class Event {
       event.put("library", Constants.SDK_LIBRARY + "/" + Constants.SDK_VERSION);
       event.put("platform", replaceWithJSONNull(platform));
       event.put("os_name", replaceWithJSONNull(osName));
+      event.put("os_version", replaceWithJSONNull(osVersion));
       event.put("device_brand", replaceWithJSONNull(deviceBrand));
       event.put("device_manufacturer", replaceWithJSONNull(deviceManufacturer));
       event.put("device_model", replaceWithJSONNull(deviceModel));
@@ -242,6 +249,7 @@ public class Event {
       event.put("adid", replaceWithJSONNull(adid));
       event.put("android_id", replaceWithJSONNull(androidId));
       event.put("language", replaceWithJSONNull(language));
+      event.put("partner_id", replaceWithJSONNull(partnerId));
       event.put("ip", replaceWithJSONNull(ip));
       event.put(
           "event_properties",
