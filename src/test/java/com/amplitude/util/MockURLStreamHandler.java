@@ -25,10 +25,10 @@ public class MockURLStreamHandler extends URLStreamHandler implements URLStreamH
   @Override
   protected URLConnection openConnection(URL u, Proxy p) throws IOException {
     URLConnection connection = connections.get(u);
-    if (p != Proxy.NO_PROXY) {
-      when(((HttpURLConnection) connection).usingProxy()).thenReturn(true);
-    } else {
+    if (p.equals(Proxy.NO_PROXY)) {
       when(((HttpURLConnection) connection).usingProxy()).thenReturn(false);
+    } else {
+      when(((HttpURLConnection) connection).usingProxy()).thenReturn(true);
     }
     return connection;
   }
