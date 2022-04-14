@@ -1,12 +1,11 @@
 package com.amplitude.util;
 
 import java.io.IOException;
-import java.net.URL;
-import java.net.URLConnection;
-import java.net.URLStreamHandler;
-import java.net.URLStreamHandlerFactory;
+import java.net.*;
 import java.util.HashMap;
 import java.util.Map;
+
+import static org.mockito.Mockito.when;
 
 public class MockURLStreamHandler extends URLStreamHandler implements URLStreamHandlerFactory {
 
@@ -20,7 +19,18 @@ public class MockURLStreamHandler extends URLStreamHandler implements URLStreamH
 
   @Override
   protected URLConnection openConnection(URL url) throws IOException {
-    return connections.get(url);
+    return openConnection(url, Proxy.NO_PROXY);
+  }
+
+  @Override
+  protected URLConnection openConnection(URL u, Proxy p) throws IOException {
+    URLConnection connection = connections.get(u);
+    if (p != Proxy.NO_PROXY) {
+      when(((HttpURLConnection) connection).usingProxy()).thenReturn(true);
+    } else {
+      when(((HttpURLConnection) connection).usingProxy()).thenReturn(false);
+    }
+    return connection;
   }
 
   public void resetConnections() {

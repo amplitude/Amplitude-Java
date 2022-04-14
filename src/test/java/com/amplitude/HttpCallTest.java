@@ -16,7 +16,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import javax.net.ssl.HttpsURLConnection;
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.net.ProtocolException;
+import java.net.Proxy;
 import java.net.URL;
 import java.util.Arrays;
 import java.util.List;
@@ -234,7 +236,7 @@ public class HttpCallTest {
     HttpsURLConnection connection =
             MockHttpsURLConnectionHelper.getMockHttpsURLConnection(200, responseObject.toString());
     mockURLStreamHandler.setConnection(url, connection);
-    HttpCall httpCall = getHttpCallFromCallMode(httpCallMode, options);
+    HttpCall httpCall = getHttpCallFromCallMode(httpCallMode, options, Proxy.NO_PROXY);
     List<Event> events = EventsGenerator.generateEvents(1);
 
     Response response = httpCall.makeRequest(events);
@@ -245,6 +247,27 @@ public class HttpCallTest {
     verify(connection, times(1)).setRequestProperty(customHeaderKey, customHeaderValue);
   }
 
+  @ParameterizedTest
+  @MethodSource("httpCallArguments")
+  public void testHttpCallWithCustomProxy(HttpCallMode httpCallMode, URL url)
+          throws IOException, AmplitudeInvalidAPIKeyException {
+    int payloadSizeBytes = 10;
+    long serverUploadTime = 1396381378123L;
+
+    JSONObject responseObject = getMockResponse(200, 1, payloadSizeBytes, serverUploadTime);
+    HttpsURLConnection connection =
+            MockHttpsURLConnectionHelper.getMockHttpsURLConnection(200, responseObject.toString());
+    mockURLStreamHandler.setConnection(url, connection);
+    HttpCall httpCall = getHttpCallFromCallMode(httpCallMode, null, new Proxy(Proxy.Type.HTTP, new InetSocketAddress("0.0.0.0", 443)));
+    List<Event> events = EventsGenerator.generateEvents(1);
+    Response response = httpCall.makeRequest(events);
+
+    assertEquals(200, response.code);
+    assertEquals(Status.SUCCESS, response.status);
+    verifyConnectionOption(connection);
+    assertTrue(connection.usingProxy());
+  }
+
   static Stream<Arguments> httpCallArguments() {
     return Stream.of(
         arguments(HttpCallMode.REGULAR, Constants.API_URL),
@@ -252,15 +275,14 @@ public class HttpCallTest {
   }
 
   private HttpCall getHttpCallFromCallMode(HttpCallMode httpCallMode) {
-    return getHttpCallFromCallMode(httpCallMode, null);
+    return getHttpCallFromCallMode(httpCallMode, null, Proxy.NO_PROXY);
   }
 
-  private HttpCall getHttpCallFromCallMode(HttpCallMode httpCallMode, Options options) {
+  private HttpCall getHttpCallFromCallMode(HttpCallMode httpCallMode, Options options, Proxy proxy) {
     return new HttpCall(
             apiKey,
             httpCallMode == HttpCallMode.BATCH ? Constants.BATCH_API_URL : Constants.API_URL,
-            options
-    );
+            options, proxy);
   }
 
   private void verifyConnectionOption(HttpsURLConnection connection) throws ProtocolException {
