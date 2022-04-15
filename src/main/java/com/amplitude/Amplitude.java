@@ -107,8 +107,7 @@ public class Amplitude {
    * @param isBatchMode if using batch upload or not;
    */
   public void useBatchMode(Boolean isBatchMode) {
-    httpCallMode = isBatchMode ? HttpCallMode.BATCH : HttpCallMode.REGULAR;
-    updateHttpCall(httpCallMode);
+    updateHttpCall(isBatchMode ? HttpCallMode.BATCH : HttpCallMode.REGULAR);
   }
 
   /**
