@@ -6,6 +6,7 @@ import org.json.JSONObject;
 
 import javax.net.ssl.HttpsURLConnection;
 import java.io.*;
+import java.net.Proxy;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
@@ -14,15 +15,17 @@ public class HttpCall {
   private final String apiKey;
   private final String serverUrl;
   private final Options options;
+  private final Proxy proxy;
 
   protected HttpCall(String apiKey, String serverUrl) {
-    this(apiKey, serverUrl, null);
+    this(apiKey, serverUrl, null, Proxy.NO_PROXY);
   }
 
-  protected HttpCall(String apiKey, String serverUrl, Options options) {
+  protected HttpCall(String apiKey, String serverUrl, Options options, Proxy proxy) {
     this.apiKey = apiKey;
     this.serverUrl = serverUrl;
     this.options = options;
+    this.proxy = proxy;
   }
 
   protected String getApiUrl() {
@@ -36,7 +39,7 @@ public class HttpCall {
     int responseCode = 500;
     Response responseBody = new Response();
     try {
-      connection = (HttpsURLConnection) new URL(apiUrl).openConnection();
+      connection = (HttpsURLConnection) new URL(apiUrl).openConnection(proxy);
       connection.setRequestMethod("POST");
       connection.setRequestProperty("Content-Type", "application/json");
       connection.setRequestProperty("Accept", "application/json");

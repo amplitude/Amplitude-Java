@@ -1,5 +1,6 @@
 package com.amplitude;
 
+import java.net.Proxy;
 import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
@@ -25,6 +26,11 @@ public class Amplitude {
    * A dictionary of key-value pairs that represent additional instructions for server save operation.
    */
   private Options options;
+
+  /**
+   * Custom proxy for https requests
+   */
+  private Proxy proxy = Proxy.NO_PROXY;
 
   /**
    * The runner for middleware
@@ -157,6 +163,17 @@ public class Amplitude {
   }
 
   /**
+   * Set custom proxy for https requests
+   *
+   * @param proxy Proxy object, default to Proxy.NO_PROXY for direct connection
+   */
+  public Amplitude setProxy(Proxy proxy) {
+    this.proxy = proxy;
+    updateHttpCall(httpCallMode);
+    return this;
+  }
+
+  /**
    * Add middleware to the middleware runner
    */
   public synchronized void addEventMiddleware(Middleware middleware) {
@@ -267,9 +284,9 @@ public class Amplitude {
     httpCallMode = updatedHttpCallMode;
 
     if (updatedHttpCallMode == HttpCallMode.BATCH) {
-      httpCall = new HttpCall(apiKey, serverUrl != null ? serverUrl : Constants.BATCH_API_URL, options);
+      httpCall = new HttpCall(apiKey, serverUrl != null ? serverUrl : Constants.BATCH_API_URL, options, proxy);
     } else {
-      httpCall = new HttpCall(apiKey, serverUrl != null ? serverUrl : Constants.API_URL, options);
+      httpCall = new HttpCall(apiKey, serverUrl != null ? serverUrl : Constants.API_URL, options, proxy);
     }
     httpTransport.setHttpCall(httpCall);
   }
