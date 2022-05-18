@@ -5,6 +5,7 @@ import java.net.*;
 import java.util.HashMap;
 import java.util.Map;
 
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
 public class MockURLStreamHandler extends URLStreamHandler implements URLStreamHandlerFactory {
@@ -26,9 +27,9 @@ public class MockURLStreamHandler extends URLStreamHandler implements URLStreamH
   protected URLConnection openConnection(URL u, Proxy p) throws IOException {
     URLConnection connection = connections.get(u);
     if (p.equals(Proxy.NO_PROXY)) {
-      when(((HttpURLConnection) connection).usingProxy()).thenReturn(false);
+      lenient().when(((HttpURLConnection) connection).usingProxy()).thenReturn(false);
     } else {
-      when(((HttpURLConnection) connection).usingProxy()).thenReturn(true);
+      lenient().when(((HttpURLConnection) connection).usingProxy()).thenReturn(true);
     }
     return connection;
   }

@@ -54,6 +54,10 @@ class HttpTransport {
     sendEvents(events)
         .thenAcceptAsync(
             response -> {
+              if (response == null) {
+                logger.debug("Unexpected null response", "Retry events.");
+                retryEvents(events, new Response());
+              }
               Status status = response.status;
               if (shouldRetryForStatus(status)) {
                 retryEvents(events, response);
@@ -104,6 +108,8 @@ class HttpTransport {
             logger.debug("SEND", events, response);
           } catch (AmplitudeInvalidAPIKeyException e) {
             throw new CompletionException(e);
+          } catch (Exception e) {
+            logger.error("Unexpected exception", Utils.getStackTrace(e));
           }
           return response;
         });

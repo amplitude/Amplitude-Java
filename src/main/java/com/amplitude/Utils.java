@@ -3,6 +3,9 @@ package com.amplitude;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import java.io.PrintWriter;
+import java.io.StringWriter;
+
 public class Utils {
   public static String getStringValueWithKey(JSONObject json, String key) {
     return json.has(key) && json.getString(key) != null ? json.getString(key) : "";
@@ -31,5 +34,12 @@ public class Utils {
 
   public static boolean isEmptyString(String s) {
     return (s == null || s.length() == 0);
+  }
+
+  public static String getStackTrace(Exception e) {
+    StringWriter sw = new StringWriter();
+    PrintWriter pw = new PrintWriter(sw);
+    e.printStackTrace(pw);
+    return sw.toString();
   }
 }
