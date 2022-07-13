@@ -98,9 +98,17 @@ class HttpTransport {
         sendThreadPool);
   }
 
-  public void cleanUp() throws InterruptedException{
+  public void shutdown() throws InterruptedException{
     sendThreadPool.shutdownNow();
-    sendThreadPool = Executors.newFixedThreadPool(20);
+    retryThreadPool.shutdown();
+    synchronized (bufferLock) {
+      for (String userId : idToBuffer.keySet()) {
+        for (String deviceId : idToBuffer.get(userId).keySet()) {
+          triggerEventCallbacks(idToBuffer.get(userId).remove(deviceId), 0, "Client shutdown. Events not retry.");
+        }
+        idToBuffer.remove(userId);
+      }
+    }
   }
 
   // The main entrance for the retry logic.

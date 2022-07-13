@@ -304,8 +304,8 @@ public class Amplitude {
    * Release resource by: Terminate all threads for flushing events All events hold by these threads
    * will trigger callbacks if amplitude client have configured callbacks method
    */
-  public synchronized void cleanUp() throws InterruptedException {
-    httpTransport.cleanUp();
+  public synchronized void shutdown() throws InterruptedException {
+    httpTransport.shutdown();
   }
 
   private void updateHttpCall(HttpCallMode updatedHttpCallMode) {
