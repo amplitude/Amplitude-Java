@@ -60,13 +60,14 @@ class HttpTransport {
     CompletableFuture.runAsync(new SendEventsTask(events), sendThreadPool);
   }
 
-  public void shutdown() throws InterruptedException{
+  public void shutdown() throws InterruptedException {
     sendThreadPool.shutdown();
     retryThreadPool.shutdown();
     synchronized (bufferLock) {
       for (String userId : idToBuffer.keySet()) {
         for (String deviceId : idToBuffer.get(userId).keySet()) {
-          triggerEventCallbacks(idToBuffer.get(userId).remove(deviceId), 0, "Client shutdown. Events not retry.");
+          triggerEventCallbacks(
+              idToBuffer.get(userId).remove(deviceId), 0, "Client shutdown. Events not retry.");
         }
         idToBuffer.remove(userId);
       }
@@ -138,9 +139,15 @@ class HttpTransport {
       users = new HashSet<>(idToBuffer.keySet());
     }
     for (String userId : users) {
-      Set<String> devices;
+      Set<String> devices = null;
       synchronized (bufferLock) {
-        devices = new HashSet<>(idToBuffer.get(userId).keySet());
+        Map deviceMap = idToBuffer.get(userId);
+        if (deviceMap != null) {
+          devices = new HashSet<>(deviceMap.keySet());
+        }
+      }
+      if (devices == null) {
+        continue;
       }
       for (String deviceId : devices) {
         RetryEventsOnLoop task = new RetryEventsOnLoop(userId, deviceId);
@@ -328,8 +335,10 @@ class HttpTransport {
       this.deviceId = deviceId;
       this.userId = userId;
       this.events = getEventsFromBuffer(userId, deviceId);
-      synchronized (counterLock) {
-        eventsInRetry -= events.size();
+      if (events != null) {
+        synchronized (counterLock) {
+          eventsInRetry -= events.size();
+        }
       }
     }
 
