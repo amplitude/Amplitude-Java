@@ -74,6 +74,7 @@ class HttpTransport {
               retryEvents(events, new Response());
             }
             Status status = response.status;
+            statusCode = response.code;
             if (shouldRetryForStatus(status)) {
               needCallback = false;
               retryEvents(events, response);
@@ -404,7 +405,8 @@ class HttpTransport {
           // The retry logic should only be executed after the API key checking passed.
           // This catch AmplitudeInvalidAPIKeyException is just for handling
           // retryEventsOnce in thread.
-          logger.debug("RETRY", "Retry thread got interrupted");
+          logger.error("RETRY", Utils.getStackTrace(e));
+          triggerEventCallbacks(eventsBuffer, 0, "Retry threads interrupted.");
           Thread.currentThread().interrupt();
         }
       }
