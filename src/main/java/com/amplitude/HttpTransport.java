@@ -39,60 +39,91 @@ class HttpTransport {
   private Object bufferLock = new Object();
   private Object counterLock = new Object();
   private ExecutorService retryThreadPool = Executors.newFixedThreadPool(10);
+  private ExecutorService sendThreadPool = Executors.newFixedThreadPool(20);
 
   private HttpCall httpCall;
   private AmplitudeLog logger;
   private AmplitudeCallbacks callbacks;
+  private long flushTimeout;
 
-  HttpTransport(HttpCall httpCall, AmplitudeCallbacks callbacks, AmplitudeLog logger) {
+  HttpTransport(
+      HttpCall httpCall, AmplitudeCallbacks callbacks, AmplitudeLog logger, long flushTimeout) {
     this.httpCall = httpCall;
     this.callbacks = callbacks;
     this.logger = logger;
+    this.flushTimeout = flushTimeout;
   }
 
   public void sendEventsWithRetry(List<Event> events) {
-    sendEvents(events)
-        .thenAcceptAsync(
-            response -> {
-              if (response == null) {
-                logger.debug("Unexpected null response", "Retry events.");
-                retryEvents(events, new Response());
-              }
-              Status status = response.status;
-              if (shouldRetryForStatus(status)) {
-                retryEvents(events, response);
-              } else if (status == Status.SUCCESS) {
-                triggerEventCallbacks(events, response.code, "Event sent success.");
-              } else if (status == Status.FAILED) {
-                triggerEventCallbacks(events, response.code, "Event sent Failed.");
-              } else {
-                triggerEventCallbacks(events, response.code, "Unknown response status.");
-              }
-            })
-        .exceptionally(
-            exception -> {
-              logger.error("Invalid API Key", exception.getMessage());
-              return null;
-            });
+    CompletableFuture.supplyAsync(
+        () -> {
+          int statusCode = 0;
+          String callbackMessage = "Error send events";
+          boolean needCallback = true;
+          try {
+            CompletableFuture<Response> future = sendEvents(events);
+            Response response;
+            if (flushTimeout > 0) {
+              response = future.get(flushTimeout, TimeUnit.MILLISECONDS);
+            } else {
+              response = future.get();
+            }
+            if (response == null) {
+              logger.debug("Unexpected null response", "Retry events.");
+              needCallback = false;
+              retryEvents(events, new Response());
+            }
+            Status status = response.status;
+            if (shouldRetryForStatus(status)) {
+              needCallback = false;
+              retryEvents(events, response);
+            } else if (status == Status.SUCCESS) {
+              callbackMessage = "Event sent success.";
+            } else if (status == Status.FAILED) {
+              callbackMessage = "Event sent Failed.";
+            } else {
+              callbackMessage = "Unknown response status.";
+            }
+          } catch (Exception exception) {
+            logger.error("Flush Thread Error", Utils.getStackTrace(exception));
+            logger.error("Error event payload", events.toString());
+          } finally {
+            if (needCallback) {
+              triggerEventCallbacks(events, statusCode, callbackMessage);
+            }
+          }
+          return null;
+        },
+        sendThreadPool);
+  }
+
+  public void cleanUp() throws InterruptedException{
+    sendThreadPool.shutdownNow();
+    sendThreadPool = Executors.newFixedThreadPool(20);
   }
 
   // The main entrance for the retry logic.
   public void retryEvents(List<Event> events, Response response) {
-      int bufferSize;
-      synchronized (counterLock) {
-          bufferSize  = eventsInRetry;
-      }
-      if (bufferSize < Constants.MAX_CACHED_EVENTS) {
-          onEventsError(events, response);
-      } else {
-          String message = "Retry buffer is full(" + bufferSize + "), " + events.size() + " events dropped.";
-          logger.warn("DROP EVENTS", message);
-          triggerEventCallbacks(events, response.code, message);
-      }
+    int bufferSize;
+    synchronized (counterLock) {
+      bufferSize = eventsInRetry;
+    }
+    if (bufferSize < Constants.MAX_CACHED_EVENTS) {
+      onEventsError(events, response);
+    } else {
+      String message =
+          "Retry buffer is full(" + bufferSize + "), " + events.size() + " events dropped.";
+      logger.warn("DROP EVENTS", message);
+      triggerEventCallbacks(events, response.code, message);
+    }
   }
 
   public void setHttpCall(HttpCall httpCall) {
     this.httpCall = httpCall;
+  }
+
+  public void setFlushTimeout(long timeout) {
+    flushTimeout = timeout;
   }
 
   public void setCallbacks(AmplitudeCallbacks callbacks) {
@@ -109,11 +140,10 @@ class HttpTransport {
           Response response = null;
           try {
             response = httpCall.makeRequest(events);
-            logger.debug("SEND", events, response);
+            logger.debug("SEND", "Events count " + events.size());
+            logger.debug("RESPONSE", response.toString());
           } catch (AmplitudeInvalidAPIKeyException e) {
             throw new CompletionException(e);
-          } catch (Exception e) {
-            logger.error("Unexpected exception", Utils.getStackTrace(e));
           }
           return response;
         });
@@ -154,7 +184,8 @@ class HttpTransport {
   private EventsRetryResult retryEventsOnce(String userId, String deviceId, List<Event> events)
       throws AmplitudeInvalidAPIKeyException {
     Response response = httpCall.makeRequest(events);
-    logger.debug("RETRY", events, response);
+    logger.debug("RETRY", "Events count " + events.size());
+    logger.debug("RESPONSE", response.toString());
     boolean shouldRetry = true;
     boolean shouldReduceEventCount = false;
     int[] eventIndicesToRemove = new int[] {};

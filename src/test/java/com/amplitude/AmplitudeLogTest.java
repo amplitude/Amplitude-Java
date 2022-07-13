@@ -56,15 +56,6 @@ public class AmplitudeLogTest {
     assertEquals(expectedDebugLog, outContent.toString().trim());
   }
 
-  @Test
-  public void testDebugWithEventsResponse() {
-    amplitudeLog.setLogMode(AmplitudeLog.LogMode.DEBUG);
-    List<Event> events = EventsGenerator.generateEvents(10);
-    Response response = ResponseUtil.getSuccessResponse();
-    amplitudeLog.debug("TEST", events, response);
-    assertEquals("TEST: Events count 10.\n{\n    \"code\": 200,\n    \"status\": \"SUCCESS\"\n}", outContent.toString().substring(23).trim());
-  }
-
   static Stream<Arguments> logArguments() {
     return Stream.of(
         arguments(AmplitudeLog.LogMode.ERROR, "Test: error message", "", ""),

@@ -175,16 +175,14 @@ public class AmplitudeMultiThreadTest {
     }
 
     public void onLogEventServerResponse(Event event, int status, String message) {
-      latch.countDown();
-
       boolean success = status >= 200 && status <= 300;
       if (success) {
         successEvents.incrementAndGet();
-        pendingEvents.decrementAndGet();
       } else {
         failedEvents.incrementAndGet();
-        pendingEvents.decrementAndGet();
       }
+      pendingEvents.decrementAndGet();
+      latch.countDown();
     }
 
     public void blockWithTimeout(int timeoutInSecond) throws InterruptedException {

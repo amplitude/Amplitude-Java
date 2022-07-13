@@ -3,6 +3,7 @@ package com.amplitude;
 import java.net.Proxy;
 import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.TimeUnit;
 
 public class Amplitude {
   private static Map<String, Amplitude> instances = new HashMap<>();
@@ -21,20 +22,18 @@ public class Amplitude {
   private int eventUploadPeriodMillis = Constants.EVENT_BUF_TIME_MILLIS;
   private Object eventQueueLock = new Object();
   private Plan plan;
+  private long flushTimeout;
 
   /**
-   * A dictionary of key-value pairs that represent additional instructions for server save operation.
+   * A dictionary of key-value pairs that represent additional instructions for server save
+   * operation.
    */
   private Options options;
 
-  /**
-   * Custom proxy for https requests
-   */
+  /** Custom proxy for https requests */
   private Proxy proxy = Proxy.NO_PROXY;
 
-  /**
-   * The runner for middleware
-   * */
+  /** The runner for middleware */
   MiddlewareRunner middlewareRunner = new MiddlewareRunner();
 
   /**
@@ -45,7 +44,7 @@ public class Amplitude {
     logger = new AmplitudeLog();
     eventsToSend = new ConcurrentLinkedQueue<>();
     aboutToStartFlushing = false;
-    httpTransport = new HttpTransport(httpCall, null, logger);
+    httpTransport = new HttpTransport(httpCall, null, logger, flushTimeout);
   }
 
   /**
@@ -120,9 +119,9 @@ public class Amplitude {
   }
 
   /**
-   * Sets event upload threshold. The SDK will attempt to batch upload unsent events
-   * every eventUploadPeriodMillis milliseconds, or if the unsent event count exceeds the
-   * event upload threshold.
+   * Sets event upload threshold. The SDK will attempt to batch upload unsent events every
+   * eventUploadPeriodMillis milliseconds, or if the unsent event count exceeds the event upload
+   * threshold.
    *
    * @param eventUploadThreshold the event upload threshold
    */
@@ -185,8 +184,17 @@ public class Amplitude {
   }
 
   /**
-   * Add middleware to the middleware runner
+   * Set flush events threads execution timeout in milliseconds
+   *
+   * @param timeout the flush events threads timeout millis
    */
+  public Amplitude setFlushTimeout(long timeout) {
+    flushTimeout = timeout;
+    this.httpTransport.setFlushTimeout(timeout);
+    return this;
+  }
+
+  /** Add middleware to the middleware runner */
   public synchronized void addEventMiddleware(Middleware middleware) {
     middlewareRunner.add(middleware);
   }
@@ -269,11 +277,11 @@ public class Amplitude {
   }
 
   /**
-   * Check the status of the client, return true if any of the following situation:
-   * 1. Events sit in memory waiting for flush are more than flush threshold
-   * 2. Events in retry buffer are more than 16,000
-   * 3. When setRecordThrottledId(true), the userId or deviceId of the input event was throttled and retry attempt for the userId/deviceId not finished.
-   * Can be called before logEvent(event) and add some wait time if return true.
+   * Check the status of the client, return true if any of the following situation: 1. Events sit in
+   * memory waiting for flush are more than flush threshold 2. Events in retry buffer are more than
+   * 16,000 3. When setRecordThrottledId(true), the userId or deviceId of the input event was
+   * throttled and retry attempt for the userId/deviceId not finished. Can be called before
+   * logEvent(event) and add some wait time if return true.
    *
    * @param event The event to be sent.
    * @return true if client is busy or event may be throttled.
@@ -283,7 +291,8 @@ public class Amplitude {
   }
 
   /**
-   * Config whether the client record the recent throttled userId/deviceId and make suggestion base on it.
+   * Config whether the client record the recent throttled userId/deviceId and make suggestion base
+   * on it.
    *
    * @param record true to record
    */
@@ -291,13 +300,24 @@ public class Amplitude {
     httpTransport.setRecordThrottledId(record);
   }
 
+  /**
+   * Release resource by: Terminate all threads for flushing events All events hold by these threads
+   * will trigger callbacks if amplitude client have configured callbacks method
+   */
+  public synchronized void cleanUp() throws InterruptedException {
+    httpTransport.cleanUp();
+  }
+
   private void updateHttpCall(HttpCallMode updatedHttpCallMode) {
     httpCallMode = updatedHttpCallMode;
 
     if (updatedHttpCallMode == HttpCallMode.BATCH) {
-      httpCall = new HttpCall(apiKey, serverUrl != null ? serverUrl : Constants.BATCH_API_URL, options, proxy);
+      httpCall =
+          new HttpCall(
+              apiKey, serverUrl != null ? serverUrl : Constants.BATCH_API_URL, options, proxy);
     } else {
-      httpCall = new HttpCall(apiKey, serverUrl != null ? serverUrl : Constants.API_URL, options, proxy);
+      httpCall =
+          new HttpCall(apiKey, serverUrl != null ? serverUrl : Constants.API_URL, options, proxy);
     }
     httpTransport.setHttpCall(httpCall);
   }
