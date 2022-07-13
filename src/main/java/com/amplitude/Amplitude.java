@@ -304,7 +304,7 @@ public class Amplitude {
 
   /**
    * Release resource by:
-   * Terminate all threads for flushing events and shutdown threadspool.
+   * Shutdown threadspool for executing flush events task.
    * All events hold by these threads will trigger callbacks if amplitude client have configured callbacks method.
    * Shutdown client instance stop sending further events.
    */

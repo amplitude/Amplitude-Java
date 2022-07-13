@@ -38,8 +38,8 @@ class HttpTransport {
   private int eventsInRetry = 0;
   private Object bufferLock = new Object();
   private Object counterLock = new Object();
-  private ExecutorService retryThreadPool = Executors.newFixedThreadPool(10);
-  private ExecutorService sendThreadPool = Executors.newFixedThreadPool(20);
+  private ExecutorService retryThreadPool;
+  private ExecutorService sendThreadPool;
 
   private HttpCall httpCall;
   private AmplitudeLog logger;
@@ -52,54 +52,16 @@ class HttpTransport {
     this.callbacks = callbacks;
     this.logger = logger;
     this.flushTimeout = flushTimeout;
+    retryThreadPool = Executors.newFixedThreadPool(10);
+    sendThreadPool = Executors.newFixedThreadPool(20);
   }
 
   public void sendEventsWithRetry(List<Event> events) {
-    CompletableFuture.supplyAsync(
-        () -> {
-          int statusCode = 0;
-          String callbackMessage = "Error send events";
-          boolean needCallback = true;
-          try {
-            CompletableFuture<Response> future = sendEvents(events);
-            Response response;
-            if (flushTimeout > 0) {
-              response = future.get(flushTimeout, TimeUnit.MILLISECONDS);
-            } else {
-              response = future.get();
-            }
-            if (response == null) {
-              logger.debug("Unexpected null response", "Retry events.");
-              needCallback = false;
-              retryEvents(events, new Response());
-            }
-            Status status = response.status;
-            statusCode = response.code;
-            if (shouldRetryForStatus(status)) {
-              needCallback = false;
-              retryEvents(events, response);
-            } else if (status == Status.SUCCESS) {
-              callbackMessage = "Event sent success.";
-            } else if (status == Status.FAILED) {
-              callbackMessage = "Event sent Failed.";
-            } else {
-              callbackMessage = "Unknown response status.";
-            }
-          } catch (Exception exception) {
-            logger.error("Flush Thread Error", Utils.getStackTrace(exception));
-            logger.error("Error event payload", events.toString());
-          } finally {
-            if (needCallback) {
-              triggerEventCallbacks(events, statusCode, callbackMessage);
-            }
-          }
-          return null;
-        },
-        sendThreadPool);
+    CompletableFuture.runAsync(new SendEventsTask(events), sendThreadPool);
   }
 
   public void shutdown() throws InterruptedException{
-    sendThreadPool.shutdownNow();
+    sendThreadPool.shutdown();
     retryThreadPool.shutdown();
     synchronized (bufferLock) {
       for (String userId : idToBuffer.keySet()) {
@@ -181,10 +143,12 @@ class HttpTransport {
         devices = new HashSet<>(idToBuffer.get(userId).keySet());
       }
       for (String deviceId : devices) {
+        RetryEventsOnLoop task = new RetryEventsOnLoop(userId, deviceId);
         try {
-          retryThreadPool.execute(new RetryEventsOnLoop(userId, deviceId));
+          retryThreadPool.execute(task);
         } catch (RejectedExecutionException e) {
-          logger.warn("Failed init retry thread", e.getMessage());
+          logger.error("Failed init retry thread", Utils.getStackTrace(e));
+          triggerEventCallbacks(task.events, 0, "Failed init retry thread");
         }
       }
     }
@@ -358,24 +322,25 @@ class HttpTransport {
   class RetryEventsOnLoop implements Runnable {
     private String userId;
     private String deviceId;
+    private List<Event> events;
 
     RetryEventsOnLoop(String userId, String deviceId) {
       this.deviceId = deviceId;
       this.userId = userId;
+      this.events = getEventsFromBuffer(userId, deviceId);
+      synchronized (counterLock) {
+        eventsInRetry -= events.size();
+      }
     }
 
     @Override
     public void run() {
-      List<Event> eventsBuffer = getEventsFromBuffer(userId, deviceId);
-      if (eventsBuffer == null || eventsBuffer.size() == 0) {
+      if (events == null || events.size() == 0) {
         return;
-      }
-      synchronized (counterLock) {
-        eventsInRetry -= eventsBuffer.size();
       }
       int retryTimes = Constants.RETRY_TIMEOUTS.length;
       for (int numRetries = 0; numRetries < retryTimes; numRetries++) {
-        int eventCount = eventsBuffer.size();
+        int eventCount = events.size();
         if (eventCount <= 0) {
           break;
         }
@@ -383,13 +348,13 @@ class HttpTransport {
         try {
           Thread.sleep(sleepDuration);
           boolean isLastTry = numRetries == retryTimes - 1;
-          EventsRetryResult retryResult = retryEventsOnce(userId, deviceId, eventsBuffer);
+          EventsRetryResult retryResult = retryEventsOnce(userId, deviceId, events);
           boolean shouldRetry = retryResult.shouldRetry;
           if (!shouldRetry) {
             // call back done in retryEventsOnce
             break;
           } else if (isLastTry) {
-            triggerEventCallbacks(eventsBuffer, retryResult.statusCode, "Event retries exhausted.");
+            triggerEventCallbacks(events, retryResult.statusCode, "Event retries exhausted.");
             break;
           }
           boolean shouldReduceEventCount = retryResult.shouldReduceEventCount;
@@ -399,22 +364,19 @@ class HttpTransport {
             for (int i = eventIndicesToRemove.length - 1; i >= 0; i--) {
               int index = eventIndicesToRemove[i];
               if (index < eventCount) {
-                eventsToDrop.add(eventsBuffer.remove(index));
+                eventsToDrop.add(events.remove(index));
               }
             }
             triggerEventCallbacks(eventsToDrop, retryResult.statusCode, "Invalid events.");
           } else if (shouldReduceEventCount) {
-            List<Event> eventsToDrop = eventsBuffer.subList(eventCount / 2, eventCount);
+            List<Event> eventsToDrop = events.subList(eventCount / 2, eventCount);
             triggerEventCallbacks(eventsToDrop, retryResult.statusCode, "Event dropped for retry");
-            eventsBuffer = eventsBuffer.subList(0, eventCount / 2);
+            events = events.subList(0, eventCount / 2);
           }
 
-        } catch (InterruptedException | AmplitudeInvalidAPIKeyException e) {
-          // The retry logic should only be executed after the API key checking passed.
-          // This catch AmplitudeInvalidAPIKeyException is just for handling
-          // retryEventsOnce in thread.
+        } catch (Exception e) {
           logger.error("RETRY", Utils.getStackTrace(e));
-          triggerEventCallbacks(eventsBuffer, 0, "Retry threads interrupted.");
+          triggerEventCallbacks(events, 0, "Retry threads Exception.");
           Thread.currentThread().interrupt();
         }
       }
@@ -422,6 +384,54 @@ class HttpTransport {
         synchronized (throttleLock) {
           throttledUserId.remove(userId);
           throttledDeviceId.remove(deviceId);
+        }
+      }
+    }
+  }
+
+  class SendEventsTask implements Runnable {
+    private List<Event> events;
+
+    SendEventsTask(List<Event> events) {
+      this.events = events;
+    }
+
+    @Override
+    public void run() {
+      int statusCode = 0;
+      String callbackMessage = "Error send events";
+      boolean needCallback = true;
+      try {
+        CompletableFuture<Response> future = sendEvents(events);
+        Response response;
+        if (flushTimeout > 0) {
+          response = future.get(flushTimeout, TimeUnit.MILLISECONDS);
+        } else {
+          response = future.get();
+        }
+        if (response == null) {
+          logger.debug("Unexpected null response", "Retry events.");
+          needCallback = false;
+          retryEvents(events, new Response());
+        }
+        Status status = response.status;
+        statusCode = response.code;
+        if (shouldRetryForStatus(status)) {
+          needCallback = false;
+          retryEvents(events, response);
+        } else if (status == Status.SUCCESS) {
+          callbackMessage = "Event sent success.";
+        } else if (status == Status.FAILED) {
+          callbackMessage = "Event sent Failed.";
+        } else {
+          callbackMessage = "Unknown response status.";
+        }
+      } catch (Exception exception) {
+        logger.error("Flush Thread Error", Utils.getStackTrace(exception));
+        logger.error("Error event payload", events.toString());
+      } finally {
+        if (needCallback) {
+          triggerEventCallbacks(events, statusCode, callbackMessage);
         }
       }
     }

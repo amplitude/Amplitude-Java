@@ -397,36 +397,37 @@ public class HttpTransportTest {
     }
   }
 
-    @Test
-    public void testCleanUpCallback()
-            throws AmplitudeInvalidAPIKeyException, InterruptedException {
-        Response successResponse = ResponseUtil.getSuccessResponse();
-        HttpCall httpCall = mock(HttpCall.class);
-        CountDownLatch latch = new CountDownLatch(10);
-        when(httpCall.makeRequest(anyList()))
-                .thenAnswer(
-                        invocation -> {
-                            Thread.sleep(5000);
-                            return successResponse;
-                        });
-        List<Event> events = EventsGenerator.generateEvents(10);
-        Map<Event, Integer> resultMap = new HashMap<>();
-        AmplitudeCallbacks callbacks =
-                new AmplitudeCallbacks() {
-                    @Override
-                    public void onLogEventServerResponse(Event event, int status, String message) {
-                        resultMap.put(event, status);
-                        latch.countDown();
-                    }
-                };
-        httpTransport.setHttpCall(httpCall);
-        httpTransport.setCallbacks(callbacks);
-        httpTransport.sendEventsWithRetry(events);
-        httpTransport.shutdown();
-        assertTrue(latch.await(1L, TimeUnit.SECONDS));
-        verify(httpCall, times(1)).makeRequest(anyList());
-        for (int i = 0; i < events.size(); i++) {
-            assertEquals(0, resultMap.get(events.get(i)));
-        }
+  @Test
+  public void testShutdownCallback() throws AmplitudeInvalidAPIKeyException, InterruptedException {
+    Response successResponse = ResponseUtil.getSuccessResponse();
+    HttpCall httpCall = mock(HttpCall.class);
+    CountDownLatch latch = new CountDownLatch(300);
+    when(httpCall.makeRequest(anyList()))
+        .thenAnswer(
+            invocation -> {
+              Thread.sleep(500);
+              return successResponse;
+            });
+    List<Event> events = EventsGenerator.generateEvents(10);
+    Map<Event, Integer> resultMap = new HashMap<>();
+    AmplitudeCallbacks callbacks =
+        new AmplitudeCallbacks() {
+          @Override
+          public void onLogEventServerResponse(Event event, int status, String message) {
+            resultMap.put(event, status);
+            latch.countDown();
+          }
+        };
+    httpTransport.setHttpCall(httpCall);
+    httpTransport.setCallbacks(callbacks);
+    for (int i = 0; i < 30; i++) {
+      httpTransport.sendEventsWithRetry(events);
     }
+    httpTransport.shutdown();
+
+    assertTrue(latch.await(5L, TimeUnit.SECONDS));
+    for (int i = 0; i < events.size(); i++) {
+      assertEquals(200, resultMap.get(events.get(i)));
+    }
+  }
 }
