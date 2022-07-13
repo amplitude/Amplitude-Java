@@ -7,6 +7,7 @@ import java.util.concurrent.TimeUnit;
 
 public class Amplitude {
   private static Map<String, Amplitude> instances = new HashMap<>();
+  private final String instanceName;
   private String apiKey;
   private String serverUrl;
 
@@ -40,7 +41,8 @@ public class Amplitude {
    * Private internal constructor for Amplitude. Please use `getInstance(String name)` or
    * `getInstance()` to get a new instance.
    */
-  private Amplitude() {
+  private Amplitude(String name) {
+    instanceName = name;
     logger = new AmplitudeLog();
     eventsToSend = new ConcurrentLinkedQueue<>();
     aboutToStartFlushing = false;
@@ -64,7 +66,7 @@ public class Amplitude {
    */
   public static Amplitude getInstance(String instanceName) {
     if (!instances.containsKey(instanceName)) {
-      Amplitude ampInstance = new Amplitude();
+      Amplitude ampInstance = new Amplitude(instanceName);
       instances.put(instanceName, ampInstance);
     }
     return instances.get(instanceName);
@@ -301,11 +303,14 @@ public class Amplitude {
   }
 
   /**
-   * Release resource by: Terminate all threads for flushing events All events hold by these threads
-   * will trigger callbacks if amplitude client have configured callbacks method
+   * Release resource by:
+   * Terminate all threads for flushing events and shutdown threadspool.
+   * All events hold by these threads will trigger callbacks if amplitude client have configured callbacks method.
+   * Shutdown client instance stop sending further events.
    */
-  public synchronized void shutdown() throws InterruptedException {
+  public void shutdown() throws InterruptedException {
     httpTransport.shutdown();
+    instances.remove(instanceName);
   }
 
   private void updateHttpCall(HttpCallMode updatedHttpCallMode) {
