@@ -99,6 +99,10 @@ class HttpTransport {
     this.callbacks = callbacks;
   }
 
+  public void setLogger(AmplitudeLog logger) {
+    this.logger = logger;
+  }
+
   private CompletableFuture<Response> sendEvents(List<Event> events) {
     return CompletableFuture.supplyAsync(
         () -> {
