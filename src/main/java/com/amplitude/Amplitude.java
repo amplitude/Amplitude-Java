@@ -174,6 +174,17 @@ public class Amplitude {
   }
 
   /**
+   * Set custom logger instance for amplitude client
+   *
+   * @param logger AmplitudeLog object
+   */
+  public Amplitude setLogger(AmplitudeLog logger) {
+    this.logger = logger;
+    this.httpTransport.setLogger(logger);
+    return this;
+  }
+
+  /**
    * Add middleware to the middleware runner
    */
   public synchronized void addEventMiddleware(Middleware middleware) {
