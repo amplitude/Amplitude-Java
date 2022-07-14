@@ -279,11 +279,11 @@ public class Amplitude {
   }
 
   /**
-   * Check the status of the client, return true if any of the following situation: 1. Events sit in
-   * memory waiting for flush are more than flush threshold 2. Events in retry buffer are more than
-   * 16,000 3. When setRecordThrottledId(true), the userId or deviceId of the input event was
-   * throttled and retry attempt for the userId/deviceId not finished. Can be called before
-   * logEvent(event) and add some wait time if return true.
+   * Check the status of the client, return true if any of the following situation:
+   * 1. Events sit in memory waiting for flush are more than flush threshold
+   * 2. Events in retry buffer are more than 16,000
+   * 3. When setRecordThrottledId(true), the userId or deviceId of the input event was throttled and retry attempt for the userId/deviceId not finished.
+   * Can be called before logEvent(event) and add some wait time if return true.
    *
    * @param event The event to be sent.
    * @return true if client is busy or event may be throttled.
