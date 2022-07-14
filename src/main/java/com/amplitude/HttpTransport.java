@@ -38,61 +38,64 @@ class HttpTransport {
   private int eventsInRetry = 0;
   private Object bufferLock = new Object();
   private Object counterLock = new Object();
-  private ExecutorService retryThreadPool = Executors.newFixedThreadPool(10);
+  private ExecutorService retryThreadPool;
+  private ExecutorService sendThreadPool;
 
   private HttpCall httpCall;
   private AmplitudeLog logger;
   private AmplitudeCallbacks callbacks;
+  private long flushTimeout;
 
-  HttpTransport(HttpCall httpCall, AmplitudeCallbacks callbacks, AmplitudeLog logger) {
+  HttpTransport(
+      HttpCall httpCall, AmplitudeCallbacks callbacks, AmplitudeLog logger, long flushTimeout) {
     this.httpCall = httpCall;
     this.callbacks = callbacks;
     this.logger = logger;
+    this.flushTimeout = flushTimeout;
+    retryThreadPool = Executors.newFixedThreadPool(10);
+    sendThreadPool = Executors.newFixedThreadPool(20);
   }
 
   public void sendEventsWithRetry(List<Event> events) {
-    sendEvents(events)
-        .thenAcceptAsync(
-            response -> {
-              if (response == null) {
-                logger.debug("Unexpected null response", "Retry events.");
-                retryEvents(events, new Response());
-              }
-              Status status = response.status;
-              if (shouldRetryForStatus(status)) {
-                retryEvents(events, response);
-              } else if (status == Status.SUCCESS) {
-                triggerEventCallbacks(events, response.code, "Event sent success.");
-              } else if (status == Status.FAILED) {
-                triggerEventCallbacks(events, response.code, "Event sent Failed.");
-              } else {
-                triggerEventCallbacks(events, response.code, "Unknown response status.");
-              }
-            })
-        .exceptionally(
-            exception -> {
-              logger.error("Invalid API Key", exception.getMessage());
-              return null;
-            });
+    CompletableFuture.runAsync(new SendEventsTask(events), sendThreadPool);
+  }
+
+  public void shutdown() throws InterruptedException {
+    sendThreadPool.shutdown();
+    retryThreadPool.shutdown();
+    synchronized (bufferLock) {
+      for (String userId : idToBuffer.keySet()) {
+        for (String deviceId : idToBuffer.get(userId).keySet()) {
+          triggerEventCallbacks(
+              idToBuffer.get(userId).remove(deviceId), 0, "Client shutdown. Events not retry.");
+        }
+        idToBuffer.remove(userId);
+      }
+    }
   }
 
   // The main entrance for the retry logic.
   public void retryEvents(List<Event> events, Response response) {
-      int bufferSize;
-      synchronized (counterLock) {
-          bufferSize  = eventsInRetry;
-      }
-      if (bufferSize < Constants.MAX_CACHED_EVENTS) {
-          onEventsError(events, response);
-      } else {
-          String message = "Retry buffer is full(" + bufferSize + "), " + events.size() + " events dropped.";
-          logger.warn("DROP EVENTS", message);
-          triggerEventCallbacks(events, response.code, message);
-      }
+    int bufferSize;
+    synchronized (counterLock) {
+      bufferSize = eventsInRetry;
+    }
+    if (bufferSize < Constants.MAX_CACHED_EVENTS) {
+      onEventsError(events, response);
+    } else {
+      String message =
+          "Retry buffer is full(" + bufferSize + "), " + events.size() + " events dropped.";
+      logger.warn("DROP EVENTS", message);
+      triggerEventCallbacks(events, response.code, message);
+    }
   }
 
   public void setHttpCall(HttpCall httpCall) {
     this.httpCall = httpCall;
+  }
+
+  public void setFlushTimeout(long timeout) {
+    flushTimeout = timeout;
   }
 
   public void setCallbacks(AmplitudeCallbacks callbacks) {
@@ -109,11 +112,10 @@ class HttpTransport {
           Response response = null;
           try {
             response = httpCall.makeRequest(events);
-            logger.debug("SEND", events, response);
+            logger.debug("SEND", "Events count " + events.size());
+            logger.debug("RESPONSE", response.toString());
           } catch (AmplitudeInvalidAPIKeyException e) {
             throw new CompletionException(e);
-          } catch (Exception e) {
-            logger.error("Unexpected exception", Utils.getStackTrace(e));
           }
           return response;
         });
@@ -137,15 +139,23 @@ class HttpTransport {
       users = new HashSet<>(idToBuffer.keySet());
     }
     for (String userId : users) {
-      Set<String> devices;
+      Set<String> devices = null;
       synchronized (bufferLock) {
-        devices = new HashSet<>(idToBuffer.get(userId).keySet());
+        Map deviceMap = idToBuffer.get(userId);
+        if (deviceMap != null) {
+          devices = new HashSet<>(deviceMap.keySet());
+        }
+      }
+      if (devices == null) {
+        continue;
       }
       for (String deviceId : devices) {
+        RetryEventsOnLoop task = new RetryEventsOnLoop(userId, deviceId);
         try {
-          retryThreadPool.execute(new RetryEventsOnLoop(userId, deviceId));
+          retryThreadPool.execute(task);
         } catch (RejectedExecutionException e) {
-          logger.warn("Failed init retry thread", e.getMessage());
+          logger.error("Failed init retry thread", Utils.getStackTrace(e));
+          triggerEventCallbacks(task.events, 0, "Failed init retry thread");
         }
       }
     }
@@ -154,7 +164,8 @@ class HttpTransport {
   private EventsRetryResult retryEventsOnce(String userId, String deviceId, List<Event> events)
       throws AmplitudeInvalidAPIKeyException {
     Response response = httpCall.makeRequest(events);
-    logger.debug("RETRY", events, response);
+    logger.debug("RETRY", "Events count " + events.size());
+    logger.debug("RESPONSE", response.toString());
     boolean shouldRetry = true;
     boolean shouldReduceEventCount = false;
     int[] eventIndicesToRemove = new int[] {};
@@ -318,24 +329,27 @@ class HttpTransport {
   class RetryEventsOnLoop implements Runnable {
     private String userId;
     private String deviceId;
+    private List<Event> events;
 
     RetryEventsOnLoop(String userId, String deviceId) {
       this.deviceId = deviceId;
       this.userId = userId;
+      this.events = getEventsFromBuffer(userId, deviceId);
+      if (events != null) {
+        synchronized (counterLock) {
+          eventsInRetry -= events.size();
+        }
+      }
     }
 
     @Override
     public void run() {
-      List<Event> eventsBuffer = getEventsFromBuffer(userId, deviceId);
-      if (eventsBuffer == null || eventsBuffer.size() == 0) {
+      if (events == null || events.size() == 0) {
         return;
-      }
-      synchronized (counterLock) {
-        eventsInRetry -= eventsBuffer.size();
       }
       int retryTimes = Constants.RETRY_TIMEOUTS.length;
       for (int numRetries = 0; numRetries < retryTimes; numRetries++) {
-        int eventCount = eventsBuffer.size();
+        int eventCount = events.size();
         if (eventCount <= 0) {
           break;
         }
@@ -343,13 +357,13 @@ class HttpTransport {
         try {
           Thread.sleep(sleepDuration);
           boolean isLastTry = numRetries == retryTimes - 1;
-          EventsRetryResult retryResult = retryEventsOnce(userId, deviceId, eventsBuffer);
+          EventsRetryResult retryResult = retryEventsOnce(userId, deviceId, events);
           boolean shouldRetry = retryResult.shouldRetry;
           if (!shouldRetry) {
             // call back done in retryEventsOnce
             break;
           } else if (isLastTry) {
-            triggerEventCallbacks(eventsBuffer, retryResult.statusCode, "Event retries exhausted.");
+            triggerEventCallbacks(events, retryResult.statusCode, "Event retries exhausted.");
             break;
           }
           boolean shouldReduceEventCount = retryResult.shouldReduceEventCount;
@@ -359,21 +373,19 @@ class HttpTransport {
             for (int i = eventIndicesToRemove.length - 1; i >= 0; i--) {
               int index = eventIndicesToRemove[i];
               if (index < eventCount) {
-                eventsToDrop.add(eventsBuffer.remove(index));
+                eventsToDrop.add(events.remove(index));
               }
             }
             triggerEventCallbacks(eventsToDrop, retryResult.statusCode, "Invalid events.");
           } else if (shouldReduceEventCount) {
-            List<Event> eventsToDrop = eventsBuffer.subList(eventCount / 2, eventCount);
+            List<Event> eventsToDrop = events.subList(eventCount / 2, eventCount);
             triggerEventCallbacks(eventsToDrop, retryResult.statusCode, "Event dropped for retry");
-            eventsBuffer = eventsBuffer.subList(0, eventCount / 2);
+            events = events.subList(0, eventCount / 2);
           }
 
-        } catch (InterruptedException | AmplitudeInvalidAPIKeyException e) {
-          // The retry logic should only be executed after the API key checking passed.
-          // This catch AmplitudeInvalidAPIKeyException is just for handling
-          // retryEventsOnce in thread.
-          logger.debug("RETRY", "Retry thread got interrupted");
+        } catch (Exception e) {
+          logger.error("RETRY", Utils.getStackTrace(e));
+          triggerEventCallbacks(events, 0, "Retry threads Exception.");
           Thread.currentThread().interrupt();
         }
       }
@@ -381,6 +393,54 @@ class HttpTransport {
         synchronized (throttleLock) {
           throttledUserId.remove(userId);
           throttledDeviceId.remove(deviceId);
+        }
+      }
+    }
+  }
+
+  class SendEventsTask implements Runnable {
+    private List<Event> events;
+
+    SendEventsTask(List<Event> events) {
+      this.events = events;
+    }
+
+    @Override
+    public void run() {
+      int statusCode = 0;
+      String callbackMessage = "Error send events";
+      boolean needCallback = true;
+      try {
+        CompletableFuture<Response> future = sendEvents(events);
+        Response response;
+        if (flushTimeout > 0) {
+          response = future.get(flushTimeout, TimeUnit.MILLISECONDS);
+        } else {
+          response = future.get();
+        }
+        if (response == null) {
+          logger.debug("Unexpected null response", "Retry events.");
+          needCallback = false;
+          retryEvents(events, new Response());
+        }
+        Status status = response.status;
+        statusCode = response.code;
+        if (shouldRetryForStatus(status)) {
+          needCallback = false;
+          retryEvents(events, response);
+        } else if (status == Status.SUCCESS) {
+          callbackMessage = "Event sent success.";
+        } else if (status == Status.FAILED) {
+          callbackMessage = "Event sent Failed.";
+        } else {
+          callbackMessage = "Unknown response status.";
+        }
+      } catch (Exception exception) {
+        logger.error("Flush Thread Error", Utils.getStackTrace(exception));
+        logger.error("Error event payload", events.toString());
+      } finally {
+        if (needCallback) {
+          triggerEventCallbacks(events, statusCode, callbackMessage);
         }
       }
     }

@@ -342,6 +342,10 @@ public class Event {
     return array;
   }
 
+  public String toString() {
+    return this.toJsonObject().toString();
+  }
+
   protected String truncate(String value) {
     return value.length() <= Constants.MAX_STRING_LENGTH
         ? value

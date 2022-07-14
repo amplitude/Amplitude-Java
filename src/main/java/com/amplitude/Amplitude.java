@@ -3,9 +3,11 @@ package com.amplitude;
 import java.net.Proxy;
 import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.TimeUnit;
 
 public class Amplitude {
   private static Map<String, Amplitude> instances = new HashMap<>();
+  private final String instanceName;
   private String apiKey;
   private String serverUrl;
 
@@ -21,31 +23,30 @@ public class Amplitude {
   private int eventUploadPeriodMillis = Constants.EVENT_BUF_TIME_MILLIS;
   private Object eventQueueLock = new Object();
   private Plan plan;
+  private long flushTimeout;
 
   /**
-   * A dictionary of key-value pairs that represent additional instructions for server save operation.
+   * A dictionary of key-value pairs that represent additional instructions for server save
+   * operation.
    */
   private Options options;
 
-  /**
-   * Custom proxy for https requests
-   */
+  /** Custom proxy for https requests */
   private Proxy proxy = Proxy.NO_PROXY;
 
-  /**
-   * The runner for middleware
-   * */
+  /** The runner for middleware */
   MiddlewareRunner middlewareRunner = new MiddlewareRunner();
 
   /**
    * Private internal constructor for Amplitude. Please use `getInstance(String name)` or
    * `getInstance()` to get a new instance.
    */
-  private Amplitude() {
+  private Amplitude(String name) {
+    instanceName = name;
     logger = new AmplitudeLog();
     eventsToSend = new ConcurrentLinkedQueue<>();
     aboutToStartFlushing = false;
-    httpTransport = new HttpTransport(httpCall, null, logger);
+    httpTransport = new HttpTransport(httpCall, null, logger, flushTimeout);
   }
 
   /**
@@ -65,7 +66,7 @@ public class Amplitude {
    */
   public static Amplitude getInstance(String instanceName) {
     if (!instances.containsKey(instanceName)) {
-      Amplitude ampInstance = new Amplitude();
+      Amplitude ampInstance = new Amplitude(instanceName);
       instances.put(instanceName, ampInstance);
     }
     return instances.get(instanceName);
@@ -120,9 +121,9 @@ public class Amplitude {
   }
 
   /**
-   * Sets event upload threshold. The SDK will attempt to batch upload unsent events
-   * every eventUploadPeriodMillis milliseconds, or if the unsent event count exceeds the
-   * event upload threshold.
+   * Sets event upload threshold. The SDK will attempt to batch upload unsent events every
+   * eventUploadPeriodMillis milliseconds, or if the unsent event count exceeds the event upload
+   * threshold.
    *
    * @param eventUploadThreshold the event upload threshold
    */
@@ -185,8 +186,17 @@ public class Amplitude {
   }
 
   /**
-   * Add middleware to the middleware runner
+   * Set flush events threads execution timeout in milliseconds
+   *
+   * @param timeout the flush events threads timeout millis
    */
+  public Amplitude setFlushTimeout(long timeout) {
+    flushTimeout = timeout;
+    this.httpTransport.setFlushTimeout(timeout);
+    return this;
+  }
+
+  /** Add middleware to the middleware runner */
   public synchronized void addEventMiddleware(Middleware middleware) {
     middlewareRunner.add(middleware);
   }
@@ -283,7 +293,8 @@ public class Amplitude {
   }
 
   /**
-   * Config whether the client record the recent throttled userId/deviceId and make suggestion base on it.
+   * Config whether the client record the recent throttled userId/deviceId and make suggestion base
+   * on it.
    *
    * @param record true to record
    */
@@ -291,13 +302,27 @@ public class Amplitude {
     httpTransport.setRecordThrottledId(record);
   }
 
+  /**
+   * Release resource by:
+   * Shutdown threadspool for executing flush events task.
+   * All events hold by these threads will trigger callbacks if amplitude client have configured callbacks method.
+   * Shutdown client instance stop sending further events.
+   */
+  public void shutdown() throws InterruptedException {
+    httpTransport.shutdown();
+    instances.remove(instanceName);
+  }
+
   private void updateHttpCall(HttpCallMode updatedHttpCallMode) {
     httpCallMode = updatedHttpCallMode;
 
     if (updatedHttpCallMode == HttpCallMode.BATCH) {
-      httpCall = new HttpCall(apiKey, serverUrl != null ? serverUrl : Constants.BATCH_API_URL, options, proxy);
+      httpCall =
+          new HttpCall(
+              apiKey, serverUrl != null ? serverUrl : Constants.BATCH_API_URL, options, proxy);
     } else {
-      httpCall = new HttpCall(apiKey, serverUrl != null ? serverUrl : Constants.API_URL, options, proxy);
+      httpCall =
+          new HttpCall(apiKey, serverUrl != null ? serverUrl : Constants.API_URL, options, proxy);
     }
     httpTransport.setHttpCall(httpCall);
   }
