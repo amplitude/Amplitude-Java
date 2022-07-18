@@ -13,10 +13,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.lang.reflect.Field;
 import java.util.*;
-import java.util.concurrent.BrokenBarrierException;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.CyclicBarrier;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -219,6 +216,7 @@ public class AmplitudeTest {
     HttpCall httpCall = getMockHttpCall(amplitude, false);
     Response successResponse = ResponseUtil.getSuccessResponse();
     CountDownLatch latch = new CountDownLatch(1);
+    CountDownLatch latch2 = new CountDownLatch(10);
     when(httpCall.makeRequest(anyList()))
         .thenAnswer(
             invocation -> {
@@ -233,6 +231,7 @@ public class AmplitudeTest {
           public void onLogEventServerResponse(Event event, int status, String message) {
             assertEquals(200, status);
             callbackCount1.incrementAndGet();
+            latch2.countDown();
           }
         };
     AmplitudeCallbacks callbacks2 =
@@ -241,6 +240,7 @@ public class AmplitudeTest {
           public void onLogEventServerResponse(Event event, int status, String message) {
             assertEquals(200, status);
             callbackCount2.incrementAndGet();
+            latch2.countDown();
           }
         };
     for (int i = 0; i < events.size(); i++) {
@@ -248,6 +248,7 @@ public class AmplitudeTest {
       amplitude.logEvent(events.get(i), callbackForEvent);
     }
     assertTrue(latch.await(1L, TimeUnit.SECONDS));
+    assertTrue(latch2.await(1L, TimeUnit.SECONDS));
     verify(httpCall, times(1)).makeRequest(anyList());
     assertEquals(5, callbackCount1.get());
     assertEquals(5, callbackCount2.get());
@@ -391,17 +392,18 @@ public class AmplitudeTest {
     amplitude.logEvent(event);
     amplitude.logEvent(event2);
     amplitude.flushEvents();
-    assertTrue(amplitude.shouldWait(event));
+    assertTrue(shouldWaitResultWithTimeout(amplitude, event, 1L, TimeUnit.SECONDS));
     assertFalse(amplitude.shouldWait(event2));
     barrier.await();
     assertTrue(latch.await(1L, TimeUnit.SECONDS));
     assertTrue(callbackLatch.await(1L, TimeUnit.SECONDS));
-    assertFalse(amplitude.shouldWait(event));
-    assertFalse(amplitude.shouldWait(event2));
+    assertFalse(shouldWaitResultWithTimeout(amplitude, event, 1L, TimeUnit.SECONDS));
   }
 
   @Test
-  public void testSetPlan() throws NoSuchFieldException, IllegalAccessException, AmplitudeInvalidAPIKeyException, InterruptedException {
+  public void testSetPlan()
+      throws NoSuchFieldException, IllegalAccessException, AmplitudeInvalidAPIKeyException,
+          InterruptedException {
     Amplitude amplitude = Amplitude.getInstance("testSetPlan");
     amplitude.init(apiKey);
 
@@ -410,7 +412,8 @@ public class AmplitudeTest {
     String version = "1.0.0";
     String versionId = "9ec23ba0-275f-468f-80d1-66b88bff9529";
 
-    Plan plan = new Plan().setBranch(branch).setSource(source).setVersion(version).setVersionId(versionId);
+    Plan plan =
+        new Plan().setBranch(branch).setSource(source).setVersion(version).setVersionId(versionId);
     amplitude.setPlan(plan);
 
     amplitude.useBatchMode(false);
@@ -465,5 +468,19 @@ public class AmplitudeTest {
     Field callbackField = httpTransport.getClass().getDeclaredField("callbacks");
     callbackField.setAccessible(true);
     return (AmplitudeCallbacks) callbackField.get(httpTransport);
+  }
+
+  public boolean shouldWaitResultWithTimeout(Amplitude client, Event event, long time, TimeUnit unit) {
+    CompletableFuture<Boolean> future = CompletableFuture.supplyAsync(() -> {
+      while (!client.shouldWait(event)) {
+        continue;
+      }
+      return true;
+    });
+    try {
+      return future.get(time, unit);
+    } catch (Exception e) {
+      return false;
+    }
   }
 }
