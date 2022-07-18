@@ -384,6 +384,7 @@ public class HttpTransportTest {
           @Override
           public void onLogEventServerResponse(Event event, int status, String message) {
             resultMap.put(event, status);
+            assertEquals("Error send events", message);
             latch.countDown();
           }
         };
@@ -391,7 +392,6 @@ public class HttpTransportTest {
     httpTransport.setCallbacks(callbacks);
     httpTransport.sendEventsWithRetry(events);
     assertTrue(latch.await(1L, TimeUnit.SECONDS));
-    verify(httpCall, times(1)).makeRequest(anyList());
     for (int i = 0; i < events.size(); i++) {
       assertEquals(0, resultMap.get(events.get(i)));
     }
