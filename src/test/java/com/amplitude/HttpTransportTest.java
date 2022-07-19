@@ -214,8 +214,8 @@ public class HttpTransportTest {
     httpTransport.setCallbacks(callbacks);
     httpTransport.retryEvents(events, rateLimitResponse);
     assertTrue(latch.await(1L, TimeUnit.SECONDS));
-    for (int i = 0; i < events.size(); i++) {
-      assertEquals(429, resultMap.get(events.get(i)));
+    for (Event event : events) {
+      assertEquals(429, resultMap.get(event));
     }
   }
 
@@ -250,8 +250,8 @@ public class HttpTransportTest {
     assertTrue(latch.await(1L, TimeUnit.SECONDS));
     assertTrue(latch2.await(1L, TimeUnit.SECONDS));
     verify(httpCall, times(1)).makeRequest(anyList());
-    for (int i = 0; i < events.size(); i++) {
-      assertEquals(429, resultMap.get(events.get(i)));
+    for (Event event : events) {
+      assertEquals(429, resultMap.get(event));
     }
   }
 
@@ -291,8 +291,8 @@ public class HttpTransportTest {
     assertTrue(latch.await(1L, TimeUnit.SECONDS));
     assertTrue(latch2.await(1L, TimeUnit.SECONDS));
     verify(httpCall, times(2)).makeRequest(anyList());
-    for (int i = 0; i < events.size(); i++) {
-      assertEquals(200, resultMap.get(events.get(i)));
+    for (Event event : events) {
+      assertEquals(200, resultMap.get(event));
     }
   }
 
@@ -325,8 +325,8 @@ public class HttpTransportTest {
     assertTrue(latch.await(1L, TimeUnit.SECONDS));
     assertTrue(latch2.await(1L, TimeUnit.SECONDS));
     verify(httpCall, times(1)).makeRequest(anyList());
-    for (int i = 0; i < events.size(); i++) {
-      assertEquals(500, resultMap.get(events.get(i)));
+    for (Event event : events) {
+      assertEquals(500, resultMap.get(event));
     }
   }
 
@@ -359,8 +359,8 @@ public class HttpTransportTest {
     assertTrue(latch.await(1L, TimeUnit.SECONDS));
     assertTrue(latch2.await(1L, TimeUnit.SECONDS));
     verify(httpCall, times(1)).makeRequest(anyList());
-    for (int i = 0; i < events.size(); i++) {
-      assertEquals(0, resultMap.get(events.get(i)));
+    for (Event event : events) {
+      assertEquals(0, resultMap.get(event));
     }
   }
 
@@ -384,6 +384,7 @@ public class HttpTransportTest {
           @Override
           public void onLogEventServerResponse(Event event, int status, String message) {
             resultMap.put(event, status);
+            assertEquals("Error send events", message);
             latch.countDown();
           }
         };
@@ -391,9 +392,8 @@ public class HttpTransportTest {
     httpTransport.setCallbacks(callbacks);
     httpTransport.sendEventsWithRetry(events);
     assertTrue(latch.await(1L, TimeUnit.SECONDS));
-    verify(httpCall, times(1)).makeRequest(anyList());
-    for (int i = 0; i < events.size(); i++) {
-      assertEquals(0, resultMap.get(events.get(i)));
+    for (Event event : events) {
+      assertEquals(0, resultMap.get(event));
     }
   }
 
@@ -426,8 +426,8 @@ public class HttpTransportTest {
     httpTransport.shutdown();
 
     assertTrue(latch.await(5L, TimeUnit.SECONDS));
-    for (int i = 0; i < events.size(); i++) {
-      assertEquals(200, resultMap.get(events.get(i)));
+    for (Event event : events) {
+      assertEquals(200, resultMap.get(event));
     }
   }
 }
