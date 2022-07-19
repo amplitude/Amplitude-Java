@@ -470,7 +470,7 @@ public class AmplitudeTest {
     return (AmplitudeCallbacks) callbackField.get(httpTransport);
   }
 
-  public boolean shouldWaitResultWithTimeout(Amplitude client, Event event, long time, TimeUnit unit) {
+  private boolean shouldWaitResultWithTimeout(Amplitude client, Event event, long time, TimeUnit unit) {
     CompletableFuture<Boolean> future = CompletableFuture.supplyAsync(() -> {
       while (!client.shouldWait(event)) {
         continue;
