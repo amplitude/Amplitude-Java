@@ -446,6 +446,41 @@ public class AmplitudeTest {
     assertEquals(versionId, result.getString(Constants.AMP_PLAN_VERSION_ID));
   }
 
+  @Test
+  public void testSetLibraryContext()
+          throws NoSuchFieldException, IllegalAccessException, AmplitudeInvalidAPIKeyException,
+          InterruptedException {
+    Amplitude amplitude = Amplitude.getInstance("testSetLibraryContext");
+    amplitude.init(apiKey);
+
+    String libraryContext = "test_library_context/1.x";
+
+    amplitude.setLibraryContext(libraryContext);
+
+    amplitude.useBatchMode(false);
+    amplitude.setEventUploadThreshold(1);
+    HttpCall httpCall = getMockHttpCall(amplitude, false);
+    Response response = ResponseUtil.getSuccessResponse();
+    CountDownLatch latch = new CountDownLatch(1);
+
+    AtomicReference<List<Event>> sentEvents = new AtomicReference<>();
+    when(httpCall.makeRequest(anyList()))
+            .thenAnswer(
+                    invocation -> {
+                      sentEvents.set(invocation.getArgument(0));
+                      latch.countDown();
+                      return response;
+                    });
+
+    amplitude.logEvent(new Event("test-event", "test-user"));
+
+    assertTrue(latch.await(1L, TimeUnit.SECONDS));
+    assertEquals(1, sentEvents.get().size());
+
+    Event sentEvent = sentEvents.get().get(0);
+    assertEquals(libraryContext, sentEvent.libraryContext);
+  }
+
   private HttpCall getMockHttpCall(Amplitude amplitude, boolean useBatch)
       throws NoSuchFieldException, IllegalAccessException {
     HttpCall httpCall = mock(HttpCall.class);

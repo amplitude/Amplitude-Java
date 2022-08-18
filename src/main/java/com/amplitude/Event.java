@@ -184,6 +184,11 @@ public class Event {
   public Plan plan;
 
   /**
+   * The library context information.
+   */
+  public String libraryContext;
+
+  /**
    * Callback for Event
    */
   protected AmplitudeCallbacks callback;
@@ -278,6 +283,10 @@ public class Event {
 
       if (plan != null) {
         event.put("plan", plan.toJSONObject());
+      }
+
+      if (libraryContext != null) {
+        event.put("library_context", libraryContext);
       }
     } catch (JSONException e) {
       e.printStackTrace();
