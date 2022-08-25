@@ -24,7 +24,6 @@ public class Amplitude {
   private Object eventQueueLock = new Object();
   private Plan plan;
   private long flushTimeout;
-  private String libraryContext;
 
   /**
    * A dictionary of key-value pairs that represent additional instructions for server save
@@ -165,16 +164,6 @@ public class Amplitude {
   }
 
   /**
-   * Set library context information.
-   *
-   * @param libraryContext String
-   */
-  public Amplitude setLibraryContext(String libraryContext) {
-    this.libraryContext = libraryContext;
-    return this;
-  }
-
-  /**
    * Set custom proxy for https requests
    *
    * @param proxy Proxy object, default to Proxy.NO_PROXY for direct connection
@@ -251,10 +240,6 @@ public class Amplitude {
   public void logEvent(Event event, AmplitudeCallbacks callbacks, MiddlewareExtra extra) {
     if (event.plan == null) {
       event.plan = this.plan;
-    }
-
-    if (event.libraryContext == null) {
-      event.libraryContext = this.libraryContext;
     }
 
     if (!middlewareRunner.run(new MiddlewarePayload(event, extra))) {
