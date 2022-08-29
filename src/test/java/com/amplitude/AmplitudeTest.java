@@ -446,6 +446,49 @@ public class AmplitudeTest {
     assertEquals(versionId, result.getString(Constants.AMP_PLAN_VERSION_ID));
   }
 
+  @Test
+  public void testSetIngestionMetadata()
+          throws NoSuchFieldException, IllegalAccessException, AmplitudeInvalidAPIKeyException,
+          InterruptedException {
+    Amplitude amplitude = Amplitude.getInstance("testSetIngestionMetadata");
+    amplitude.init(apiKey);
+
+    IngestionMetadata ingestionMetadata = new IngestionMetadata();
+    String sourceName = "ampli";
+    String sourceVersion = "1.0.0";
+    ingestionMetadata.setSourceName(sourceName)
+            .setSourceVersion(sourceVersion);
+
+    amplitude.setIngestionMetadata(ingestionMetadata);
+
+    amplitude.useBatchMode(false);
+    amplitude.setEventUploadThreshold(1);
+    HttpCall httpCall = getMockHttpCall(amplitude, false);
+    Response response = ResponseUtil.getSuccessResponse();
+    CountDownLatch latch = new CountDownLatch(1);
+
+    AtomicReference<List<Event>> sentEvents = new AtomicReference<>();
+    when(httpCall.makeRequest(anyList()))
+            .thenAnswer(
+                    invocation -> {
+                      sentEvents.set(invocation.getArgument(0));
+                      latch.countDown();
+                      return response;
+                    });
+
+    amplitude.logEvent(new Event("test-event", "test-user"));
+
+    assertTrue(latch.await(1L, TimeUnit.SECONDS));
+    assertEquals(1, sentEvents.get().size());
+
+    Event sentEvent = sentEvents.get().get(0);
+    assertNotNull(sentEvent.ingestionMetadata);
+
+    JSONObject result = sentEvent.ingestionMetadata.toJSONObject();
+    assertEquals(sourceName, result.getString(Constants.INGESTION_METADATA_SOURCE_NAME));
+    assertEquals(sourceVersion, result.getString(Constants.INGESTION_METADATA_SOURCE_VERSION));
+  }
+
   private HttpCall getMockHttpCall(Amplitude amplitude, boolean useBatch)
       throws NoSuchFieldException, IllegalAccessException {
     HttpCall httpCall = mock(HttpCall.class);

@@ -3,7 +3,6 @@ package com.amplitude;
 import java.net.Proxy;
 import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.TimeUnit;
 
 public class Amplitude {
   private static Map<String, Amplitude> instances = new HashMap<>();
@@ -23,6 +22,7 @@ public class Amplitude {
   private int eventUploadPeriodMillis = Constants.EVENT_BUF_TIME_MILLIS;
   private Object eventQueueLock = new Object();
   private Plan plan;
+  private IngestionMetadata ingestionMetadata;
   private long flushTimeout;
 
   /**
@@ -164,6 +164,16 @@ public class Amplitude {
   }
 
   /**
+   * Set ingestion metadata information.
+   *
+   * @param ingestionMetadata IngestionMetadata object
+   */
+  public Amplitude setIngestionMetadata(IngestionMetadata ingestionMetadata) {
+    this.ingestionMetadata = ingestionMetadata;
+    return this;
+  }
+
+  /**
    * Set custom proxy for https requests
    *
    * @param proxy Proxy object, default to Proxy.NO_PROXY for direct connection
@@ -240,6 +250,10 @@ public class Amplitude {
   public void logEvent(Event event, AmplitudeCallbacks callbacks, MiddlewareExtra extra) {
     if (event.plan == null) {
       event.plan = this.plan;
+    }
+
+    if (event.ingestionMetadata == null) {
+      event.ingestionMetadata = this.ingestionMetadata;
     }
 
     if (!middlewareRunner.run(new MiddlewarePayload(event, extra))) {

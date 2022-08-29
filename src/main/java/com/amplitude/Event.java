@@ -184,6 +184,11 @@ public class Event {
   public Plan plan;
 
   /**
+   * The ingestion metadata.
+   */
+  public IngestionMetadata ingestionMetadata;
+
+  /**
    * Callback for Event
    */
   protected AmplitudeCallbacks callback;
@@ -278,6 +283,10 @@ public class Event {
 
       if (plan != null) {
         event.put("plan", plan.toJSONObject());
+      }
+
+      if (ingestionMetadata != null) {
+        event.put("ingestion_metadata", ingestionMetadata.toJSONObject());
       }
     } catch (JSONException e) {
       e.printStackTrace();
