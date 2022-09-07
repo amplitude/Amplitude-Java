@@ -485,8 +485,8 @@ public class AmplitudeTest {
     assertNotNull(sentEvent.ingestionMetadata);
 
     JSONObject result = sentEvent.ingestionMetadata.toJSONObject();
-    assertEquals(sourceName, result.getString(Constants.INGESTION_METADATA_SOURCE_NAME));
-    assertEquals(sourceVersion, result.getString(Constants.INGESTION_METADATA_SOURCE_VERSION));
+    assertEquals(sourceName, result.getString(Constants.AMP_INGESTION_METADATA_SOURCE_NAME));
+    assertEquals(sourceVersion, result.getString(Constants.AMP_INGESTION_METADATA_SOURCE_VERSION));
   }
 
   private HttpCall getMockHttpCall(Amplitude amplitude, boolean useBatch)

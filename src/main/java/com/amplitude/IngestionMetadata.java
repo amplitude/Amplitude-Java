@@ -48,10 +48,10 @@ public class IngestionMetadata {
 
         JSONObject jsonObject = new JSONObject();
         if (!Utils.isEmptyString(sourceName)) {
-            jsonObject.put(Constants.INGESTION_METADATA_SOURCE_NAME, sourceName);
+            jsonObject.put(Constants.AMP_INGESTION_METADATA_SOURCE_NAME, sourceName);
         }
         if (!Utils.isEmptyString(sourceVersion)) {
-            jsonObject.put(Constants.INGESTION_METADATA_SOURCE_VERSION, sourceVersion);
+            jsonObject.put(Constants.AMP_INGESTION_METADATA_SOURCE_VERSION, sourceVersion);
         }
         this.jsonObject = jsonObject;
         return jsonObject;
