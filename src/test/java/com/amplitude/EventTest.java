@@ -40,6 +40,13 @@ public class EventTest {
     eventProperties.put("event_message", eventMsgArray);
     event.eventProperties = eventProperties;
 
+    IngestionMetadata ingestionMetadata = new IngestionMetadata();
+    String sourceName = "ampli";
+    String sourceVersion = "1.0.0";
+    ingestionMetadata.setSourceName(sourceName)
+            .setSourceVersion(sourceVersion);
+    event.ingestionMetadata = ingestionMetadata;
+
     JSONObject truncatedEvent = event.toJsonObject();
     JSONArray truncatedEventMsgArray =
         truncatedEvent.getJSONObject("event_properties").getJSONArray("event_message");
@@ -52,6 +59,8 @@ public class EventTest {
     assertEquals(
         Constants.SDK_LIBRARY + "/" + Constants.SDK_VERSION, truncatedEvent.getString("library"));
     assertEquals(-1, truncatedEvent.getLong("session_id"));
+    assertEquals(sourceName, truncatedEvent.getJSONObject("ingestion_metadata").getString("source_name"));
+    assertEquals(sourceVersion, truncatedEvent.getJSONObject("ingestion_metadata").getString("source_version"));
   }
 
   @Test

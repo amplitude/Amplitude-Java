@@ -23,4 +23,7 @@ public interface Constants {
   String AMP_PLAN_SOURCE = "source";
   String AMP_PLAN_VERSION = "version";
   String AMP_PLAN_VERSION_ID = "versionId";
+
+  String AMP_INGESTION_METADATA_SOURCE_NAME = "source_name";
+  String AMP_INGESTION_METADATA_SOURCE_VERSION = "source_version";
 }
