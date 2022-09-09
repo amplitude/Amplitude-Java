@@ -6,7 +6,7 @@ public interface Constants {
 
   int NETWORK_TIMEOUT_MILLIS = 10000;
   String SDK_LIBRARY = "amplitude-java";
-  String SDK_VERSION = "1.10.0";
+  String SDK_VERSION = "1.10.1";
 
   int MAX_PROPERTY_KEYS = 1024;
   int MAX_STRING_LENGTH = 1000;
