@@ -32,7 +32,7 @@ idea {
 sourceSets.main.java.srcDirs = ['java']
 
 dependencies {
-    implementation 'org.json:json:20201115'
+    implementation 'org.json:json:20220320'
 }
 
 java {
