@@ -266,7 +266,8 @@ class HttpTransport {
     return (status == Status.INVALID
         || status == Status.PAYLOAD_TOO_LARGE
         || status == Status.RATELIMIT
-        || status == Status.TIMEOUT);
+        || status == Status.TIMEOUT
+        || status == Status.FAILED);
   }
 
   private void triggerEventCallbacks(List<Event> events, int status, String message) {
