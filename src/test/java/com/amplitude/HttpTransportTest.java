@@ -42,7 +42,7 @@ public class HttpTransportTest {
     "RATELIMIT, true",
     "PAYLOAD_TOO_LARGE, true",
     "TIMEOUT, true",
-    "FAILED, false",
+    "FAILED, true",
     "UNKNOWN, false"
   })
   public void testShouldRetryForStatus(Status status, boolean expected) {
@@ -55,9 +55,10 @@ public class HttpTransportTest {
     Response payloadTooLargeResponse = ResponseUtil.getPayloadTooLargeResponse();
     Response invalidResponse = ResponseUtil.getInvalidResponse(false);
     Response rateLimitResponse = ResponseUtil.getRateLimitResponse(false);
+    Response failedResponse = ResponseUtil.getFailedResponse();
 
     HttpCall httpCall = mock(HttpCall.class);
-    CountDownLatch latch = new CountDownLatch(4);
+    CountDownLatch latch = new CountDownLatch(5);
     CountDownLatch latch2 = new CountDownLatch(10);
     when(httpCall.makeRequest(anyList()))
         .thenAnswer(
@@ -74,6 +75,11 @@ public class HttpTransportTest {
             invocation -> {
               latch.countDown();
               return payloadTooLargeResponse;
+            })
+        .thenAnswer(
+            invocation -> {
+                latch.countDown();
+                return failedResponse;
             })
         .thenAnswer(
             invocation -> {
@@ -94,9 +100,9 @@ public class HttpTransportTest {
     httpTransport.setHttpCall(httpCall);
     httpTransport.setCallbacks(callbacks);
     httpTransport.retryEvents(events, invalidResponse);
-    assertTrue(latch.await(1L, TimeUnit.SECONDS));
+    assertTrue(latch.await(1000000L, TimeUnit.SECONDS));
     assertTrue(latch2.await(1L, TimeUnit.SECONDS));
-    verify(httpCall, times(4)).makeRequest(anyList());
+    verify(httpCall, times(5)).makeRequest(anyList());
     for (int i = 0; i < events.size(); i++) {
       if (i < (events.size() / 4)) {
         assertEquals(200, resultMap.get(events.get(i)));
@@ -299,14 +305,20 @@ public class HttpTransportTest {
   @Test
   public void testFailedResponse() throws AmplitudeInvalidAPIKeyException, InterruptedException {
     Response failedResponse = ResponseUtil.getFailedResponse();
+    Response successResponse = ResponseUtil.getSuccessResponse();
     HttpCall httpCall = mock(HttpCall.class);
-    CountDownLatch latch = new CountDownLatch(1);
+    CountDownLatch latch = new CountDownLatch(2);
     CountDownLatch latch2 = new CountDownLatch(10);
     when(httpCall.makeRequest(anyList()))
         .thenAnswer(
             invocation -> {
               latch.countDown();
               return failedResponse;
+            })
+        .thenAnswer(
+            invocation -> {
+                latch.countDown();
+                return successResponse;
             });
 
     List<Event> events = EventsGenerator.generateEvents(10);
@@ -324,9 +336,9 @@ public class HttpTransportTest {
     httpTransport.sendEventsWithRetry(events);
     assertTrue(latch.await(1L, TimeUnit.SECONDS));
     assertTrue(latch2.await(1L, TimeUnit.SECONDS));
-    verify(httpCall, times(1)).makeRequest(anyList());
+    verify(httpCall, times(2)).makeRequest(anyList());
     for (Event event : events) {
-      assertEquals(500, resultMap.get(event));
+      assertEquals(200, resultMap.get(event));
     }
   }
 

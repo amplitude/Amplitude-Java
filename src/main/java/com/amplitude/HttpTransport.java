@@ -199,8 +199,7 @@ class HttpTransport {
         triggerEventCallbacks(events, response.code, "Unknown response status.");
         break;
       case FAILED:
-        shouldRetry = false;
-        triggerEventCallbacks(events, response.code, "Event sent Failed.");
+        shouldRetry = true;
         break;
       default:
         break;
