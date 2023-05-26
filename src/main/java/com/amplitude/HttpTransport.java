@@ -199,8 +199,7 @@ class HttpTransport {
         triggerEventCallbacks(events, response.code, "Unknown response status.");
         break;
       case FAILED:
-        shouldRetry = false;
-        triggerEventCallbacks(events, response.code, "Event sent Failed.");
+        shouldRetry = true;
         break;
       default:
         break;
@@ -266,7 +265,8 @@ class HttpTransport {
     return (status == Status.INVALID
         || status == Status.PAYLOAD_TOO_LARGE
         || status == Status.RATELIMIT
-        || status == Status.TIMEOUT);
+        || status == Status.TIMEOUT
+        || status == Status.FAILED);
   }
 
   private void triggerEventCallbacks(List<Event> events, int status, String message) {

@@ -2,6 +2,7 @@ package com.amplitude;
 
 import com.amplitude.exception.AmplitudeInvalidAPIKeyException;
 import org.json.JSONArray;
+import org.json.JSONException;
 import org.json.JSONObject;
 
 import javax.net.ssl.HttpsURLConnection;
@@ -89,6 +90,12 @@ public class HttpCall {
       timesOutResponse.put("status", Status.TIMEOUT);
       timesOutResponse.put("code", 408);
       responseBody = Response.populateResponse(timesOutResponse);
+    } catch (JSONException e) {
+      // Some error responses from load balancers and reverse proxies may have
+      // response bodies that are not JSON (e.g. HTML, XML).
+      JSONObject decodeFailureResponse = new JSONObject();
+      decodeFailureResponse.put("code", responseCode);
+      responseBody = Response.populateResponse(decodeFailureResponse);
     } finally {
       if (inputStream != null) {
         try {

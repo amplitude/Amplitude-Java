@@ -268,6 +268,22 @@ public class HttpCallTest {
     assertTrue(connection.usingProxy());
   }
 
+  @ParameterizedTest
+  @MethodSource("httpCallArguments")
+  public void testHttpCallWithNonJsonResponseBody(HttpCallMode httpCallMode, URL url)
+          throws IOException, AmplitudeInvalidAPIKeyException {
+    HttpsURLConnection connection =
+            MockHttpsURLConnectionHelper.getMockHttpsURLConnection(502, "<Response></Response>");
+    mockURLStreamHandler.setConnection(url, connection);
+    HttpCall httpCall = getHttpCallFromCallMode(httpCallMode, null, new Proxy(Proxy.Type.HTTP, new InetSocketAddress("0.0.0.0", 443)));
+    List<Event> events = EventsGenerator.generateEvents(1);
+    Response response = httpCall.makeRequest(events);
+
+    assertEquals(502, response.code);
+    assertEquals(Status.FAILED, response.status);
+    verifyConnectionOption(connection);
+  }
+
   static Stream<Arguments> httpCallArguments() {
     return Stream.of(
         arguments(HttpCallMode.REGULAR, Constants.API_URL),
