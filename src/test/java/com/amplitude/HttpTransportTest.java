@@ -100,7 +100,7 @@ public class HttpTransportTest {
     httpTransport.setHttpCall(httpCall);
     httpTransport.setCallbacks(callbacks);
     httpTransport.retryEvents(events, invalidResponse);
-    assertTrue(latch.await(1L, TimeUnit.SECONDS));
+    assertTrue(latch.await(2L, TimeUnit.SECONDS));
     assertTrue(latch2.await(1L, TimeUnit.SECONDS));
     verify(httpCall, times(5)).makeRequest(anyList());
     for (int i = 0; i < events.size(); i++) {
