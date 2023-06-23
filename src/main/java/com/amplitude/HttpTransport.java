@@ -176,10 +176,9 @@ class HttpTransport {
         break;
       case RATELIMIT:
         if (response.isUserOrDeviceExceedQuote(userId, deviceId)) {
+          shouldRetry =false;
           triggerEventCallbacks(events, response.code, response.error);
         }
-        // Reduce the payload to reduce risk of throttling
-        shouldReduceEventCount = true;
         break;
       case PAYLOAD_TOO_LARGE:
         shouldRetry = true;
