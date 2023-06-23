@@ -176,7 +176,7 @@ class HttpTransport {
         break;
       case RATELIMIT:
         if (response.isUserOrDeviceExceedQuote(userId, deviceId)) {
-          shouldRetry =false;
+          shouldRetry = false;
           triggerEventCallbacks(events, response.code, response.error);
         }
         break;
