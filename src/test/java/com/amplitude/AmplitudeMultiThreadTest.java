@@ -76,7 +76,7 @@ public class AmplitudeMultiThreadTest {
     Amplitude amplitude = Amplitude.getInstance("Multiple threads log event failure.");
     amplitude.init(apiKey);
     HttpCall httpCall = getMockHttpCall(amplitude);
-    Response payloadTooLargeResponse = ResponseUtil.getRateLimitResponse(false);
+    Response payloadTooLargeResponse = ResponseUtil.getRateLimitResponse(true);
     when(httpCall.makeRequest(anyList())).thenAnswer(invocation -> payloadTooLargeResponse);
     int total = 1000;
     CountDownCallbacks callbacks = new CountDownCallbacks(new CountDownLatch(total));
