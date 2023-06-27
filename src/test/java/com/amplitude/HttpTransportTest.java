@@ -258,6 +258,47 @@ public class HttpTransportTest {
       assertEquals(429, resultMap.get(event));
     }
   }
+  
+  @Test
+  public void testRetryEventWithUserThrottled()
+      throws AmplitudeInvalidAPIKeyException, InterruptedException {
+    Response rateLimitResponse = ResponseUtil.getRateLimitResponse(false);
+    Response successResponse = ResponseUtil.getSuccessResponse();
+    HttpCall httpCall = mock(HttpCall.class);
+    CountDownLatch latch = new CountDownLatch(2);
+    CountDownLatch latch2 = new CountDownLatch(10);
+    when(httpCall.makeRequest(anyList()))
+        .thenAnswer(
+            invocation -> {
+              latch.countDown();
+              return rateLimitResponse;
+            })
+        .thenAnswer(
+            invocation -> {
+              latch.countDown();
+              return successResponse;
+            });
+
+    List<Event> events = EventsGenerator.generateEvents(10);
+    Map<Event, Integer> resultMap = new HashMap<>();
+    AmplitudeCallbacks callbacks =
+        new AmplitudeCallbacks() {
+          @Override
+          public void onLogEventServerResponse(Event event, int status, String message) {
+            resultMap.put(event, status);
+            latch2.countDown();
+          }
+        };
+    httpTransport.setHttpCall(httpCall);
+    httpTransport.setCallbacks(callbacks);
+    httpTransport.retryEvents(events, rateLimitResponse);
+    assertTrue(latch.await(1L, TimeUnit.SECONDS));
+    assertTrue(latch2.await(1L, TimeUnit.SECONDS));
+    verify(httpCall, times(2)).makeRequest(anyList());
+    for (Event event : events) {
+      assertEquals(200, resultMap.get(event));
+    }
+  }
 
   @Test
   public void testRetryEventWithTimeout()
