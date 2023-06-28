@@ -111,7 +111,7 @@ public class AmplitudeMultiThreadTest {
     Response successResponse = ResponseUtil.getSuccessResponse();
     Response payloadTooLargeResponse = ResponseUtil.getPayloadTooLargeResponse();
     Response invalidResponse = ResponseUtil.getInvalidResponse(false);
-    Response rateLimitResponse = ResponseUtil.getRateLimitResponse(false);
+    Response rateLimitResponse = ResponseUtil.getRateLimitResponse(true);
     List<Response> responseList =
         Arrays.asList(successResponse, payloadTooLargeResponse, invalidResponse, rateLimitResponse);
     Random rand = new Random();
