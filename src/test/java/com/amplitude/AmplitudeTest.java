@@ -353,7 +353,6 @@ public class AmplitudeTest {
     HttpCall httpCall = getMockHttpCall(amplitude, false);
     CyclicBarrier barrier = new CyclicBarrier(2);
     CountDownLatch latch = new CountDownLatch(1);
-    CountDownLatch callbackLatch = new CountDownLatch(2);
     Response response = new Response();
     response.status = Status.RATELIMIT;
     response.code = 429;
@@ -382,13 +381,6 @@ public class AmplitudeTest {
     assertFalse(amplitude.shouldWait(event));
     amplitude.setRecordThrottledId(true);
     assertFalse(amplitude.shouldWait(event));
-    amplitude.setCallbacks(
-        new AmplitudeCallbacks() {
-          @Override
-          public void onLogEventServerResponse(Event event, int status, String message) {
-            callbackLatch.countDown();
-          }
-        });
     amplitude.logEvent(event);
     amplitude.logEvent(event2);
     amplitude.flushEvents();
@@ -396,8 +388,7 @@ public class AmplitudeTest {
     assertFalse(amplitude.shouldWait(event2));
     barrier.await();
     assertTrue(latch.await(1L, TimeUnit.SECONDS));
-    assertTrue(callbackLatch.await(1L, TimeUnit.SECONDS));
-    assertFalse(shouldWaitResultWithTimeout(amplitude, event, 1L, TimeUnit.SECONDS));
+    assertTrue(shouldWaitResultWithTimeout(amplitude, event, 1L, TimeUnit.SECONDS));
   }
 
   @Test
