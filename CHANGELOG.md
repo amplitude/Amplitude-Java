@@ -1,3 +1,10 @@
+## [1.11.1](https://github.com/amplitude/Amplitude-Java/compare/v1.11.0...v1.11.1) (2023-06-28)
+
+
+### Bug Fixes
+
+* should retry on 429 ([#91](https://github.com/amplitude/Amplitude-Java/issues/91)) ([bb9ce66](https://github.com/amplitude/Amplitude-Java/commit/bb9ce6680c268db318feb25ec12ac0d0f3d76df0))
+
 # [1.11.0](https://github.com/amplitude/Amplitude-Java/compare/v1.10.0...v1.11.0) (2023-06-20)
 
 
