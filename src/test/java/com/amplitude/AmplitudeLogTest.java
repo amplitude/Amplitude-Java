@@ -56,6 +56,14 @@ public class AmplitudeLogTest {
     assertEquals(expectedDebugLog, outContent.toString().trim());
   }
 
+  @Test
+  public void testLogMode() {
+    AmplitudeLog.LogMode logMode = AmplitudeLog.LogMode.DEBUG;
+    amplitudeLog.setLogMode(logMode);
+    assertEquals(amplitudeLog.getLogMode(),logMode);
+    assertEquals(amplitudeLog.getLogMode().getLogLevel(),1);
+  }
+
   static Stream<Arguments> logArguments() {
     return Stream.of(
         arguments(AmplitudeLog.LogMode.ERROR, "Test: error message", "", ""),
