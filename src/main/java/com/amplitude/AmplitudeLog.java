@@ -7,6 +7,10 @@ public class AmplitudeLog {
     this.logMode = logMode;
   }
 
+  public LogMode getLogMode() {
+    return this.logMode;
+  }
+
   public void debug(String tag, String message) {
     log(tag, message, LogMode.DEBUG);
   }
@@ -39,6 +43,10 @@ public class AmplitudeLog {
 
     LogMode(int level) {
       this.level = level;
+    }
+
+    public int getLogLevel() {
+      return this.level;
     }
   }
 }
