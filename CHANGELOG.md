@@ -1,3 +1,15 @@
+# [1.12.0](https://github.com/amplitude/Amplitude-Java/compare/v1.11.1...v1.12.0) (2023-08-03)
+
+
+### Bug Fixes
+
+* lock semantic-release-replace-plugin version to workaround error in the latest version ([#95](https://github.com/amplitude/Amplitude-Java/issues/95)) ([7c8fd83](https://github.com/amplitude/Amplitude-Java/commit/7c8fd83c00175dfbfa200734d85e2502e8afcd46))
+
+
+### Features
+
+* support setter for logMode and logLevel ([#94](https://github.com/amplitude/Amplitude-Java/issues/94)) ([d07f830](https://github.com/amplitude/Amplitude-Java/commit/d07f83085a874a26d734bceea77f44b290157508))
+
 ## [1.11.1](https://github.com/amplitude/Amplitude-Java/compare/v1.11.0...v1.11.1) (2023-06-28)
 
 
