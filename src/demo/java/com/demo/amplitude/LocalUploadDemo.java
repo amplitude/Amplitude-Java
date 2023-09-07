@@ -12,6 +12,7 @@ public class LocalUploadDemo {
 
   public static void main(String[] args) throws InterruptedException {
     // Create and initialize Amplitude client
+    String userId = "java_sdk_demo_user";
     Amplitude client = Amplitude.getInstance();
     client.init("");
 
@@ -40,6 +41,35 @@ public class LocalUploadDemo {
           }
         };
     client.setCallbacks(callback);
+
+    // GROUPS AND GROUP PROPERTIES
+    JSONObject groups = new JSONObject()
+            .put("org", "engineering")
+            .put("department", "sdk");
+    JSONObject groupProps = new JSONObject()
+            .put("technology", "java")
+            .put("location", "toronto");
+
+    // Set group (setGroup)
+    // This assigns a user to a group or groups
+    Event setGroupEvent = new Event("$identify", userId);
+    setGroupEvent.groups = groups;
+    setGroupEvent.userProperties = groups;
+    client.logEvent(setGroupEvent);
+
+    // Set group properties (groupIdentify)
+    // This sets properties to a group or groups
+    Event groupIdentifyEvent = new Event("$groupidentify", userId);
+    groupIdentifyEvent.groups = groups;
+    groupIdentifyEvent.groupProperties = groupProps;
+    client.logEvent(groupIdentifyEvent);
+
+    // Track an event
+    client.logEvent(new Event("Test Event 1", userId));
+
+    // Flush events to the server
+    client.flushEvents();
+
     for (int i = 0; i < 10000000; i++) {
       Event ampEvent = new Event("General" + (i % 20), "Test_UserID_B" + (i % 5000));
       while (client.shouldWait(ampEvent)) {
