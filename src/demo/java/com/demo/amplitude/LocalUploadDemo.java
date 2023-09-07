@@ -55,16 +55,19 @@ public class LocalUploadDemo {
     Event setGroupEvent = new Event("$identify", userId);
     setGroupEvent.groups = groups;
     setGroupEvent.userProperties = groups;
+    client.logEvent(setGroupEvent);
 
     // Set group properties (groupIdentify)
     // This sets properties to a group or groups
     Event groupIdentifyEvent = new Event("$groupidentify", userId);
     groupIdentifyEvent.groups = groups;
     groupIdentifyEvent.groupProperties = groupProps;
-
-    client.logEvent(setGroupEvent);
     client.logEvent(groupIdentifyEvent);
+
+    // Track an event
     client.logEvent(new Event("Test Event 1", userId));
+
+    // Flush events to the server
     client.flushEvents();
 
     for (int i = 0; i < 10000000; i++) {
