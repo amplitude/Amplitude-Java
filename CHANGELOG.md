@@ -1,3 +1,10 @@
+## [1.12.1](https://github.com/amplitude/Amplitude-Java/compare/v1.12.0...v1.12.1) (2024-02-27)
+
+
+### Bug Fixes
+
+* Updating readme to force release a new version ([#101](https://github.com/amplitude/Amplitude-Java/issues/101)) ([9220917](https://github.com/amplitude/Amplitude-Java/commit/9220917372c51083a8ce827333b2897ebee391d2))
+
 # [1.12.0](https://github.com/amplitude/Amplitude-Java/compare/v1.11.1...v1.12.0) (2023-08-03)
 
 
