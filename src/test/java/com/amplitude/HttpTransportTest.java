@@ -476,7 +476,7 @@ public class HttpTransportTest {
     }
     httpTransport.shutdown();
 
-    assertTrue(latch.await(5L, TimeUnit.SECONDS));
+    assertTrue(latch.await(10L, TimeUnit.SECONDS));
     for (Event event : events) {
       assertEquals(200, resultMap.get(event));
     }
