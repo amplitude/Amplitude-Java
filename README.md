@@ -7,6 +7,7 @@ The backend Java SDK for server-side instrumentation.
 ## Installation and Quick Start
 Please visit the [Developer Center](https://developers.amplitude.com/docs/java) for instructions on using the SDK.
 
+
 ## Changelog
 View the [releases here](https://github.com/amplitude/Amplitude-Java/releases).
 
