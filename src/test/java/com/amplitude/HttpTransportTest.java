@@ -435,7 +435,7 @@ public class HttpTransportTest {
           @Override
           public void onLogEventServerResponse(Event event, int status, String message) {
             resultMap.put(event, status);
-            assertEquals("Error send events", message);
+            assertEquals("Error sending events due to the exception: java.util.concurrent.TimeoutException. Message: null", message);
             latch.countDown();
           }
         };

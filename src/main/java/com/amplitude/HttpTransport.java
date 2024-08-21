@@ -434,6 +434,8 @@ class HttpTransport {
           callbackMessage = "Unknown response status.";
         }
       } catch (Exception exception) {
+        callbackMessage =
+                "Error sending events due to the exception: " + exception + ". Message: " + exception.getMessage();
         logger.error("Flush Thread Error", Utils.getStackTrace(exception));
         logger.error("Error event payload", events.toString());
       } finally {
