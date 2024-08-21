@@ -1,3 +1,10 @@
+## [1.12.3](https://github.com/amplitude/Amplitude-Java/compare/v1.12.2...v1.12.3) (2024-08-21)
+
+
+### Bug Fixes
+
+* Add exception message in callback message ([#106](https://github.com/amplitude/Amplitude-Java/issues/106)) ([cadfa06](https://github.com/amplitude/Amplitude-Java/commit/cadfa0676c54e84b5dab2cbeec65f233d7816777))
+
 ## [1.12.2](https://github.com/amplitude/Amplitude-Java/compare/v1.12.1...v1.12.2) (2024-02-28)
 
 
