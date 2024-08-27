@@ -3,6 +3,7 @@ package com.amplitude;
 import java.net.Proxy;
 import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ExecutorService;
 
 public class Amplitude {
   private static Map<String, Amplitude> instances = new HashMap<>();
@@ -24,6 +25,8 @@ public class Amplitude {
   private Plan plan;
   private IngestionMetadata ingestionMetadata;
   private long flushTimeout;
+  private ExecutorService retryThreadPool;
+  private ExecutorService sendThreadPool;
 
   /**
    * A dictionary of key-value pairs that represent additional instructions for server save
@@ -46,7 +49,7 @@ public class Amplitude {
     logger = new AmplitudeLog();
     eventsToSend = new ConcurrentLinkedQueue<>();
     aboutToStartFlushing = false;
-    httpTransport = new HttpTransport(httpCall, null, logger, flushTimeout);
+    httpTransport = new HttpTransport(httpCall, null, logger, flushTimeout, sendThreadPool, retryThreadPool);
   }
 
   /**
@@ -203,6 +206,28 @@ public class Amplitude {
   public Amplitude setFlushTimeout(long timeout) {
     flushTimeout = timeout;
     this.httpTransport.setFlushTimeout(timeout);
+    return this;
+  }
+
+  /**
+   * Set the thread pool for sending events via {@link HttpTransport}
+   *
+   * @param sendThreadPool the thread pool for sending events
+   */
+  public Amplitude setSendThreadPool(ExecutorService sendThreadPool) {
+    this.sendThreadPool = sendThreadPool;
+    this.httpTransport.setSendThreadPool(sendThreadPool);
+    return this;
+  }
+
+  /**
+   * Set the thread pool for retrying events via {@link HttpTransport}
+   *
+   * @param retryThreadPool the thread pool for retrying events
+   */
+  public Amplitude setRetryThreadPool(ExecutorService retryThreadPool) {
+    this.retryThreadPool = retryThreadPool;
+    this.httpTransport.setRetryThreadPool(retryThreadPool);
     return this;
   }
 

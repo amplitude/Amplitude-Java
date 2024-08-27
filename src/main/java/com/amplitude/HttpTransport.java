@@ -47,13 +47,14 @@ class HttpTransport {
   private long flushTimeout;
 
   HttpTransport(
-      HttpCall httpCall, AmplitudeCallbacks callbacks, AmplitudeLog logger, long flushTimeout) {
+      HttpCall httpCall, AmplitudeCallbacks callbacks, AmplitudeLog logger,
+      long flushTimeout, ExecutorService sendThreadPool, ExecutorService retryThreadPool) {
     this.httpCall = httpCall;
     this.callbacks = callbacks;
     this.logger = logger;
     this.flushTimeout = flushTimeout;
-    retryThreadPool = Executors.newFixedThreadPool(10);
-    sendThreadPool = Executors.newFixedThreadPool(20);
+    this.retryThreadPool = (retryThreadPool == null) ? Executors.newFixedThreadPool(10) : retryThreadPool;
+    this.sendThreadPool = (sendThreadPool == null) ? Executors.newFixedThreadPool(40) : sendThreadPool;
   }
 
   public void sendEventsWithRetry(List<Event> events) {
@@ -98,6 +99,14 @@ class HttpTransport {
     flushTimeout = timeout;
   }
 
+  public void setSendThreadPool(ExecutorService sendThreadPool) {
+    this.sendThreadPool = sendThreadPool;
+  }
+
+  public void setRetryThreadPool(ExecutorService retryThreadPool) {
+    this.retryThreadPool = retryThreadPool;
+  }
+
   public void setCallbacks(AmplitudeCallbacks callbacks) {
     this.callbacks = callbacks;
   }
@@ -118,7 +127,7 @@ class HttpTransport {
             throw new CompletionException(e);
           }
           return response;
-        });
+        }, sendThreadPool);
   }
 
   // Call this function if event not in current Retry list.
