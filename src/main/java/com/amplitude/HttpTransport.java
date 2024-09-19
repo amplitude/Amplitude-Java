@@ -38,23 +38,22 @@ class HttpTransport {
   private int eventsInRetry = 0;
   private Object bufferLock = new Object();
   private Object counterLock = new Object();
-  private ExecutorService retryThreadPool;
-  private ExecutorService sendThreadPool;
 
   private HttpCall httpCall;
   private AmplitudeLog logger;
   private AmplitudeCallbacks callbacks;
   private long flushTimeout;
 
+  // Managed by setters
+  private ExecutorService retryThreadPool = Executors.newFixedThreadPool(10);
+  private ExecutorService sendThreadPool = Executors.newFixedThreadPool(40);
+
   HttpTransport(
-      HttpCall httpCall, AmplitudeCallbacks callbacks, AmplitudeLog logger,
-      long flushTimeout, ExecutorService sendThreadPool, ExecutorService retryThreadPool) {
+      HttpCall httpCall, AmplitudeCallbacks callbacks, AmplitudeLog logger, long flushTimeout) {
     this.httpCall = httpCall;
     this.callbacks = callbacks;
     this.logger = logger;
     this.flushTimeout = flushTimeout;
-    this.retryThreadPool = (retryThreadPool == null) ? Executors.newFixedThreadPool(10) : retryThreadPool;
-    this.sendThreadPool = (sendThreadPool == null) ? Executors.newFixedThreadPool(40) : sendThreadPool;
   }
 
   public void sendEventsWithRetry(List<Event> events) {

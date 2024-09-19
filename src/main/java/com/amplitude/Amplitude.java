@@ -25,8 +25,6 @@ public class Amplitude {
   private Plan plan;
   private IngestionMetadata ingestionMetadata;
   private long flushTimeout;
-  private ExecutorService retryThreadPool;
-  private ExecutorService sendThreadPool;
 
   /**
    * A dictionary of key-value pairs that represent additional instructions for server save
@@ -49,7 +47,7 @@ public class Amplitude {
     logger = new AmplitudeLog();
     eventsToSend = new ConcurrentLinkedQueue<>();
     aboutToStartFlushing = false;
-    httpTransport = new HttpTransport(httpCall, null, logger, flushTimeout, sendThreadPool, retryThreadPool);
+    httpTransport = new HttpTransport(httpCall, null, logger, flushTimeout);
   }
 
   /**
@@ -215,7 +213,6 @@ public class Amplitude {
    * @param sendThreadPool the thread pool for sending events
    */
   public Amplitude setSendThreadPool(ExecutorService sendThreadPool) {
-    this.sendThreadPool = sendThreadPool;
     this.httpTransport.setSendThreadPool(sendThreadPool);
     return this;
   }
@@ -226,7 +223,6 @@ public class Amplitude {
    * @param retryThreadPool the thread pool for retrying events
    */
   public Amplitude setRetryThreadPool(ExecutorService retryThreadPool) {
-    this.retryThreadPool = retryThreadPool;
     this.httpTransport.setRetryThreadPool(retryThreadPool);
     return this;
   }

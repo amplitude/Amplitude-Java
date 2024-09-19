@@ -25,7 +25,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
-import org.mockito.BDDMockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.amplitude.exception.AmplitudeInvalidAPIKeyException;
@@ -40,7 +39,7 @@ public class HttpTransportTest {
 
   @BeforeEach
   public void setUp() {
-    httpTransport = new HttpTransport(null, null, new AmplitudeLog(), 0, null, null);
+    httpTransport = new HttpTransport(null, null, new AmplitudeLog(), 0);
   }
 
   /**
