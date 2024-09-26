@@ -11,6 +11,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -61,7 +62,7 @@ public class HttpTransportTest {
     }).when(sendThreadPool).execute(any());
     httpTransport.setSendThreadPool(sendThreadPool);
     httpTransport.setHttpCall(httpCall);
-    httpTransport.sendEventsWithRetry(List.of());
+    httpTransport.sendEventsWithRetry(new ArrayList<>());
     assertTrue(latch.await(2L, TimeUnit.SECONDS));
   }
 
