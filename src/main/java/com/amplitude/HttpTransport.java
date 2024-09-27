@@ -46,7 +46,8 @@ class HttpTransport {
 
   // Managed by setters
   private ExecutorService retryThreadPool = Executors.newFixedThreadPool(10);
-  private ExecutorService sendThreadPool = Executors.newFixedThreadPool(40);
+  private ExecutorService sendThreadPool = Executors.newFixedThreadPool(20);
+  private ExecutorService supplyAsyncPool = Executors.newCachedThreadPool();
 
   HttpTransport(
       HttpCall httpCall, AmplitudeCallbacks callbacks, AmplitudeLog logger, long flushTimeout) {
@@ -126,7 +127,7 @@ class HttpTransport {
             throw new CompletionException(e);
           }
           return response;
-        }, sendThreadPool);
+        }, supplyAsyncPool);
   }
 
   // Call this function if event not in current Retry list.
