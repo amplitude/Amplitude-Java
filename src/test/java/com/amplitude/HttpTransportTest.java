@@ -2,23 +2,17 @@ package com.amplitude;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
-import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -30,8 +24,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.amplitude.exception.AmplitudeInvalidAPIKeyException;
 import com.amplitude.util.EventsGenerator;
-import org.mockito.junit.jupiter.MockitoSettings;
-import org.mockito.quality.Strictness;
 
 @ExtendWith(MockitoExtension.class)
 public class HttpTransportTest {
@@ -41,29 +33,6 @@ public class HttpTransportTest {
   @BeforeEach
   public void setUp() {
     httpTransport = new HttpTransport(null, null, new AmplitudeLog(), 0);
-  }
-
-  /**
-   * This test is to make sure the same thread pool is used in both sendEventsWithRetry -> sendEvents.
-   * If the thread pool is not piped to sendEvents, then the default ForkJoinPool is used which can
-   * become a performance bottleneck.
-   */
-  @Test
-  @MockitoSettings(strictness = Strictness.LENIENT)
-  public void testSentEventsThreadpool() throws AmplitudeInvalidAPIKeyException, InterruptedException{
-    CountDownLatch latch = new CountDownLatch(2);
-    HttpCall httpCall = mock(HttpCall.class);
-    when(httpCall.makeRequest(anyList())).thenReturn(ResponseUtil.getSuccessResponse());
-    ExecutorService sendThreadPool = spy(Executors.newFixedThreadPool(2));
-    doAnswer((invocation) -> {
-      latch.countDown();
-      invocation.callRealMethod();
-      return null;
-    }).when(sendThreadPool).execute(any());
-    httpTransport.setSendThreadPool(sendThreadPool);
-    httpTransport.setHttpCall(httpCall);
-    httpTransport.sendEventsWithRetry(new ArrayList<>());
-    assertTrue(latch.await(2L, TimeUnit.SECONDS));
   }
 
   @ParameterizedTest

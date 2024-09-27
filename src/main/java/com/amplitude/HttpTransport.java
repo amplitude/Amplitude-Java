@@ -46,6 +46,12 @@ class HttpTransport {
 
   // Managed by setters
   private ExecutorService retryThreadPool = Executors.newFixedThreadPool(10);
+
+  // The supplyAsyncPool is only used within the sendThreadPool so only when
+  // the sendThreadPool is increased will the supplyAsyncPool be more utilized.
+  // We are using the supplyAsyncPool rather than the default fork join common
+  // pool because the fork join common pool scales with cpu... and we do not
+  // want to perform network requests in that small pool.
   private ExecutorService sendThreadPool = Executors.newFixedThreadPool(20);
   private ExecutorService supplyAsyncPool = Executors.newCachedThreadPool();
 
