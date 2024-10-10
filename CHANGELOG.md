@@ -1,3 +1,10 @@
+## [1.12.4](https://github.com/amplitude/Amplitude-Java/compare/v1.12.3...v1.12.4) (2024-10-10)
+
+
+### Bug Fixes
+
+* use sendThreadPool in sendEvents ([#107](https://github.com/amplitude/Amplitude-Java/issues/107)) ([88a9589](https://github.com/amplitude/Amplitude-Java/commit/88a9589811db2ff762c7b938dc3cd3ae2a1a61e7))
+
 ## [1.12.3](https://github.com/amplitude/Amplitude-Java/compare/v1.12.2...v1.12.3) (2024-08-21)
 
 
