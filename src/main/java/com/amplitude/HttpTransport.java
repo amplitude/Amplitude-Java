@@ -38,13 +38,22 @@ class HttpTransport {
   private int eventsInRetry = 0;
   private Object bufferLock = new Object();
   private Object counterLock = new Object();
-  private ExecutorService retryThreadPool;
-  private ExecutorService sendThreadPool;
 
   private HttpCall httpCall;
   private AmplitudeLog logger;
   private AmplitudeCallbacks callbacks;
   private long flushTimeout;
+
+  // Managed by setters
+  private ExecutorService retryThreadPool = Executors.newFixedThreadPool(10);
+
+  // The supplyAsyncPool is only used within the sendThreadPool so only when
+  // the sendThreadPool is increased will the supplyAsyncPool be more utilized.
+  // We are using the supplyAsyncPool rather than the default fork join common
+  // pool because the fork join common pool scales with cpu... and we do not
+  // want to perform network requests in that small pool.
+  private ExecutorService sendThreadPool = Executors.newFixedThreadPool(20);
+  private ExecutorService supplyAsyncPool = Executors.newCachedThreadPool();
 
   HttpTransport(
       HttpCall httpCall, AmplitudeCallbacks callbacks, AmplitudeLog logger, long flushTimeout) {
@@ -52,8 +61,6 @@ class HttpTransport {
     this.callbacks = callbacks;
     this.logger = logger;
     this.flushTimeout = flushTimeout;
-    retryThreadPool = Executors.newFixedThreadPool(10);
-    sendThreadPool = Executors.newFixedThreadPool(20);
   }
 
   public void sendEventsWithRetry(List<Event> events) {
@@ -98,6 +105,14 @@ class HttpTransport {
     flushTimeout = timeout;
   }
 
+  public void setSendThreadPool(ExecutorService sendThreadPool) {
+    this.sendThreadPool = sendThreadPool;
+  }
+
+  public void setRetryThreadPool(ExecutorService retryThreadPool) {
+    this.retryThreadPool = retryThreadPool;
+  }
+
   public void setCallbacks(AmplitudeCallbacks callbacks) {
     this.callbacks = callbacks;
   }
@@ -118,7 +133,7 @@ class HttpTransport {
             throw new CompletionException(e);
           }
           return response;
-        });
+        }, supplyAsyncPool);
   }
 
   // Call this function if event not in current Retry list.

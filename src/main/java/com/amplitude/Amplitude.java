@@ -3,6 +3,7 @@ package com.amplitude;
 import java.net.Proxy;
 import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ExecutorService;
 
 public class Amplitude {
   private static Map<String, Amplitude> instances = new HashMap<>();
@@ -203,6 +204,26 @@ public class Amplitude {
   public Amplitude setFlushTimeout(long timeout) {
     flushTimeout = timeout;
     this.httpTransport.setFlushTimeout(timeout);
+    return this;
+  }
+
+  /**
+   * Set the thread pool for sending events via {@link HttpTransport}
+   *
+   * @param sendThreadPool the thread pool for sending events
+   */
+  public Amplitude setSendThreadPool(ExecutorService sendThreadPool) {
+    this.httpTransport.setSendThreadPool(sendThreadPool);
+    return this;
+  }
+
+  /**
+   * Set the thread pool for retrying events via {@link HttpTransport}
+   *
+   * @param retryThreadPool the thread pool for retrying events
+   */
+  public Amplitude setRetryThreadPool(ExecutorService retryThreadPool) {
+    this.httpTransport.setRetryThreadPool(retryThreadPool);
     return this;
   }
 
