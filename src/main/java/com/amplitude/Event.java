@@ -145,6 +145,11 @@ public class Event {
   public String revenueType;
 
   /**
+   * The 3 letter revenue currency code for the item purchased.
+   */
+  public String currency;
+
+  /**
    * An incrementing counter to distinguish events with the same user_id and timestamp from each
    * other. We recommend you send an event_id, increasing over time, especially if you expect events
    * to occur simultanenously.
@@ -271,6 +276,7 @@ public class Event {
         event.put("revenue", revenue);
         event.put("productId", productId);
         event.put("revenueType", revenueType);
+        event.put("currency", currency);
       }
 
       event.put("event_id", replaceWithJSONNull(eventId));
