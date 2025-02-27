@@ -76,6 +76,7 @@ public class EventTest {
     event.price = price;
     event.productId = productId;
     event.revenueType = revenueType;
+    event.currency = "USD";
 
     JSONObject truncatedEvent = event.toJsonObject();
     assertEquals(eventType, truncatedEvent.getString("event_type"));
@@ -85,6 +86,7 @@ public class EventTest {
     assertEquals(quantity, truncatedEvent.getInt("quantity"));
     assertEquals(productId, truncatedEvent.getString("productId"));
     assertEquals(revenueType, truncatedEvent.getString("revenueType"));
+    assertEquals("USD", truncatedEvent.getString("currency"));
   }
 
   @Test
