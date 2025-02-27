@@ -1,3 +1,10 @@
+## [1.12.5](https://github.com/amplitude/Amplitude-Java/compare/v1.12.4...v1.12.5) (2025-02-27)
+
+
+### Bug Fixes
+
+* adding currency property to events ([#110](https://github.com/amplitude/Amplitude-Java/issues/110)) ([eccb693](https://github.com/amplitude/Amplitude-Java/commit/eccb693651719577026bf77a240366bc3466dd84))
+
 ## [1.12.4](https://github.com/amplitude/Amplitude-Java/compare/v1.12.3...v1.12.4) (2024-10-10)
 
 
