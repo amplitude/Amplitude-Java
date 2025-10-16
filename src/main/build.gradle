@@ -2,6 +2,7 @@ plugins {
     id 'java-library'
     id 'maven-publish'
     id 'signing'
+    id 'biz.aQute.bnd.builder' version '7.0.0'
 }
 
 compileJava {
@@ -33,6 +34,22 @@ sourceSets.main.java.srcDirs = ['java']
 
 dependencies {
     implementation 'org.json:json:20231013'
+}
+
+// OSGi Bundle Configuration
+jar {
+    manifest {
+        attributes(
+            'Bundle-Name': 'Amplitude Java SDK',
+            'Bundle-Description': 'Amplitude Java SDK for analytics tracking',
+            'Bundle-Version': version,
+            'Bundle-SymbolicName': "${group}.java-sdk",
+            'Bundle-Vendor': 'Amplitude',
+            'Export-Package': 'com.amplitude.*,com.amplitude.exception.*',
+            'Import-Package': 'org.json.*;version="[20230227,21)",!com.amplitude.*,*;resolution:=optional',
+            'Bundle-RequiredExecutionEnvironment': 'JavaSE-1.8'
+        )
+    }
 }
 
 java {
