@@ -5,6 +5,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.Iterator;
+import java.util.Map;
 import java.util.UUID;
 
 public class Event {
@@ -228,6 +229,130 @@ public class Event {
     }
     this.userId = userId;
     this.deviceId = deviceId;
+  }
+
+  /**
+   * Set event properties from a Map. This replaces any existing event properties.
+   *
+   * @param properties Map of key-value pairs for event properties
+   * @return this Event for method chaining
+   */
+  public Event setEventProperties(Map<String, Object> properties) {
+    if (properties == null) {
+      this.eventProperties = null;
+    } else {
+      this.eventProperties = new JSONObject(properties);
+    }
+    return this;
+  }
+
+  /**
+   * Add or update a single event property. If event properties is null, it will be initialized.
+   *
+   * @param key Property key
+   * @param value Property value
+   * @return this Event for method chaining
+   */
+  public Event addEventProperty(String key, Object value) {
+    if (this.eventProperties == null) {
+      this.eventProperties = new JSONObject();
+    }
+    this.eventProperties.put(key, value);
+    return this;
+  }
+
+  /**
+   * Set user properties from a Map. This replaces any existing user properties.
+   *
+   * @param properties Map of key-value pairs for user properties
+   * @return this Event for method chaining
+   */
+  public Event setUserProperties(Map<String, Object> properties) {
+    if (properties == null) {
+      this.userProperties = null;
+    } else {
+      this.userProperties = new JSONObject(properties);
+    }
+    return this;
+  }
+
+  /**
+   * Add or update a single user property. If user properties is null, it will be initialized.
+   *
+   * @param key Property key
+   * @param value Property value
+   * @return this Event for method chaining
+   */
+  public Event addUserProperty(String key, Object value) {
+    if (this.userProperties == null) {
+      this.userProperties = new JSONObject();
+    }
+    this.userProperties.put(key, value);
+    return this;
+  }
+
+  /**
+   * Set groups from a Map. This replaces any existing groups. This feature is only available to
+   * Enterprise customers who have purchased the Accounts add-on.
+   *
+   * @param groups Map of key-value pairs representing groups
+   * @return this Event for method chaining
+   */
+  public Event setGroups(Map<String, Object> groups) {
+    if (groups == null) {
+      this.groups = null;
+    } else {
+      this.groups = new JSONObject(groups);
+    }
+    return this;
+  }
+
+  /**
+   * Add or update a single group. If groups is null, it will be initialized. This feature is only
+   * available to Enterprise customers who have purchased the Accounts add-on.
+   *
+   * @param key Group key
+   * @param value Group value
+   * @return this Event for method chaining
+   */
+  public Event addGroup(String key, Object value) {
+    if (this.groups == null) {
+      this.groups = new JSONObject();
+    }
+    this.groups.put(key, value);
+    return this;
+  }
+
+  /**
+   * Set group properties from a Map. This replaces any existing group properties. This feature is
+   * only available to Enterprise customers who have purchased the Accounts add-on.
+   *
+   * @param properties Map of key-value pairs for group properties
+   * @return this Event for method chaining
+   */
+  public Event setGroupProperties(Map<String, Object> properties) {
+    if (properties == null) {
+      this.groupProperties = null;
+    } else {
+      this.groupProperties = new JSONObject(properties);
+    }
+    return this;
+  }
+
+  /**
+   * Add or update a single group property. If group properties is null, it will be initialized.
+   * This feature is only available to Enterprise customers who have purchased the Accounts add-on.
+   *
+   * @param key Property key
+   * @param value Property value
+   * @return this Event for method chaining
+   */
+  public Event addGroupProperty(String key, Object value) {
+    if (this.groupProperties == null) {
+      this.groupProperties = new JSONObject();
+    }
+    this.groupProperties.put(key, value);
+    return this;
   }
 
   /** @return the JSONObject that represents the event data of this event */
