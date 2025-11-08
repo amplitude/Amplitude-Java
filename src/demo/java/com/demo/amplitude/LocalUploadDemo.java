@@ -65,9 +65,13 @@ public class LocalUploadDemo {
     client.logEvent(groupIdentifyEvent);
 
     // GROUPS AND GROUP PROPERTIES - Using new helper methods
+    java.util.Map<String, Object> groupsMap = new java.util.HashMap<>();
+    groupsMap.put("org", "engineering");
+    groupsMap.put("department", "sdk");
+
     Event groupEventWithHelpers = new Event("$identify", userId)
-        .setGroups(java.util.Map.of("org", "engineering", "department", "sdk"))
-        .setUserProperties(java.util.Map.of("org", "engineering", "department", "sdk"));
+        .setGroups(groupsMap)
+        .setUserProperties(groupsMap);
     client.logEvent(groupEventWithHelpers);
 
     Event groupIdentifyWithHelpers = new Event("$groupidentify", userId)
@@ -81,9 +85,17 @@ public class LocalUploadDemo {
     client.logEvent(new Event("Test Event 1", userId));
 
     // USING NEW HELPER METHODS - Map-based approach
+    java.util.Map<String, Object> eventPropsMap = new java.util.HashMap<>();
+    eventPropsMap.put("method", "email");
+    eventPropsMap.put("source", "web");
+
+    java.util.Map<String, Object> userPropsMap = new java.util.HashMap<>();
+    userPropsMap.put("plan", "premium");
+    userPropsMap.put("age", 30);
+
     Event eventWithMapProps = new Event("User Login", userId)
-        .setEventProperties(java.util.Map.of("method", "email", "source", "web"))
-        .setUserProperties(java.util.Map.of("plan", "premium", "age", 30));
+        .setEventProperties(eventPropsMap)
+        .setUserProperties(userPropsMap);
     client.logEvent(eventWithMapProps);
 
     // USING NEW HELPER METHODS - Fluent builder approach

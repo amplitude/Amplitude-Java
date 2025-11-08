@@ -271,9 +271,15 @@ public class EventTest {
 
   @Test
   public void testMethodChaining() {
+    Map<String, Object> eventProps = new HashMap<>();
+    eventProps.put("event_key", "event_value");
+
+    Map<String, Object> userProps = new HashMap<>();
+    userProps.put("user_key", "user_value");
+
     Event event = new Event("test event", "test-user")
-        .setEventProperties(Map.of("event_key", "event_value"))
-        .setUserProperties(Map.of("user_key", "user_value"))
+        .setEventProperties(eventProps)
+        .setUserProperties(userProps)
         .addEventProperty("additional_event", "value")
         .addUserProperty("additional_user", "value");
 
