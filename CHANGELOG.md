@@ -1,3 +1,10 @@
+# [1.13.0](https://github.com/amplitude/Amplitude-Java/compare/v1.12.5...v1.13.0) (2025-12-09)
+
+
+### Features
+
+* add Map-based helper methods for Event properties ([#112](https://github.com/amplitude/Amplitude-Java/issues/112)) ([cb5c1d9](https://github.com/amplitude/Amplitude-Java/commit/cb5c1d9cb85cf102b87337140a5867e95b7029e1))
+
 ## [1.12.5](https://github.com/amplitude/Amplitude-Java/compare/v1.12.4...v1.12.5) (2025-02-27)
 
 
