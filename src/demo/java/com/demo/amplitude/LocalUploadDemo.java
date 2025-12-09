@@ -7,6 +7,7 @@ import com.amplitude.Event;
 import org.json.JSONObject;
 
 import java.util.concurrent.TimeUnit;
+import java.util.HashMap;
 
 public class LocalUploadDemo {
 
@@ -42,7 +43,7 @@ public class LocalUploadDemo {
         };
     client.setCallbacks(callback);
 
-    // GROUPS AND GROUP PROPERTIES
+    // GROUPS AND GROUP PROPERTIES - Traditional JSONObject approach
     JSONObject groups = new JSONObject()
             .put("org", "engineering")
             .put("department", "sdk");
@@ -64,25 +65,74 @@ public class LocalUploadDemo {
     groupIdentifyEvent.groupProperties = groupProps;
     client.logEvent(groupIdentifyEvent);
 
-    // Track an event
-    client.logEvent(new Event("Test Event 1", userId));
+    // GROUPS AND GROUP PROPERTIES - Using new helper methods
+    java.util.Map<String, Object> groupsMap = new HashMap<>();
+    groupsMap.put("new-org", "engineering");
+    groupsMap.put("new-department", "sdk");
+
+    Event groupEventWithHelpers = new Event("$identify", userId)
+        .setGroups(groupsMap)
+        .setUserProperties(groupsMap);
+    client.logEvent(groupEventWithHelpers);
+
+    Event groupIdentifyWithHelpers = new Event("$groupidentify", userId)
+        .addGroup("new-org", "engineering")
+        .addGroup("new-department", "sdk")
+        .addGroupProperty("new-technology", "java")
+        .addGroupProperty("new-location", "toronto");
+    client.logEvent(groupIdentifyWithHelpers);
+
+    // USING NEW HELPER METHODS - Map-based approach
+    java.util.Map<String, Object> eventPropsMap = new HashMap<>();
+    eventPropsMap.put("method", "email");
+    eventPropsMap.put("source", "web");
+
+    java.util.Map<String, Object> userPropsMap = new HashMap<>();
+    userPropsMap.put("plan", "premium");
+    userPropsMap.put("age", 30);
+
+    Event eventWithMapProps = new Event("User Login - new way", userId)
+        .setEventProperties(eventPropsMap)
+        .setUserProperties(userPropsMap);
+    client.logEvent(eventWithMapProps);
+
+    // event props and user props using old JSONObject approach
+    Event eventWithJSONObjectProps = new Event("Purchase Complete - old way", userId);
+    eventWithJSONObjectProps.eventProperties = new JSONObject()
+        .put("item_id", "SKU-123")
+        .put("price", 29.99)
+        .put("currency", "USD");
+    eventWithJSONObjectProps.userProperties = new JSONObject()
+        .put("total_purchases", 5)
+        .put("last_purchase_date", "2025-11-07");
+    client.logEvent(eventWithJSONObjectProps);
+
 
     // Flush events to the server
     client.flushEvents();
+    int totalEvents = 10; //10000000;
 
-    for (int i = 0; i < 10000000; i++) {
+    for (int i = 0; i < totalEvents; i++) {
       Event ampEvent = new Event("General" + (i % 20), "Test_UserID_B" + (i % 5000));
       while (client.shouldWait(ampEvent)) {
         System.out.println("Client is busy. Waiting for log event " + ampEvent.eventType);
         TimeUnit.SECONDS.sleep(60L);
       }
-      ampEvent.userProperties =
-          new JSONObject()
-              .put("property1", "p" + i)
-              .put("property2", "p" + i)
-              .put("property3", "p" + i)
-              .put("property4", "p" + i)
-              .put("property5", "p" + i);
+      // Traditional approach using JSONObject directly
+      // ampEvent.userProperties =
+      //     new JSONObject()
+      //         .put("property1", "p" + i)
+      //         .put("property2", "p" + i)
+      //         .put("property3", "p" + i)
+      //         .put("property4", "p" + i)
+      //         .put("property5", "p" + i);
+
+      // New approach using helper methods - cleaner and no JSONObject needed
+      ampEvent.addUserProperty("property1", "p" + i)
+              .addUserProperty("property2", "p" + i)
+              .addUserProperty("property3", "p" + i)
+              .addUserProperty("property4", "p" + i)
+              .addUserProperty("property5", "p" + i);
       client.logEvent(ampEvent);
     }
   }
