@@ -46,6 +46,11 @@ jobs:
         run: |
           echo '${{ secrets.GPG_KEY_CONTENTS }}' | base64 -d > 'secring.gpg'
 
+      - name: Setup pnpm for semantic-release
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
       - name: Semantic Release --dry-run
         if: ${{ github.event.inputs.dryRun == 'true'}}
         env:
@@ -55,14 +60,8 @@ jobs:
           GIT_COMMITTER_NAME: amplitude-sdk-bot
           GIT_COMMITTER_EMAIL: amplitude-sdk-bot@users.noreply.github.com
         run: |
-          npx \
-          -p lodash \
-          -p semantic-release@17 \
-          -p @semantic-release/changelog@5 \
-          -p @semantic-release/git@9 \
-          -p @google/semantic-release-replace-plugin@1.2.0 \
-          -p @semantic-release/exec@5 \
-          semantic-release --dry-run
+          pnpm install --frozen-lockfile
+          pnpm exec semantic-release --dry-run
 
       - name: Semantic Release
         if: ${{ github.event.inputs.dryRun == 'false'}}
@@ -78,11 +77,5 @@ jobs:
           SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
           SIGNING_SECRET_RING_FILE: ../../secring.gpg
         run: |
-          npx \
-          -p lodash \
-          -p semantic-release@17 \
-          -p @semantic-release/changelog@5 \
-          -p @semantic-release/git@9 \
-          -p @google/semantic-release-replace-plugin@1.2.0 \
-          -p @semantic-release/exec@5 \
-          semantic-release
+          pnpm install --frozen-lockfile
+          pnpm exec semantic-release
