@@ -42,3 +42,10 @@ task runWithJavaExec(type: JavaExec) {
     classpath = sourceSets.main.runtimeClasspath
     main = "com.amplitude.Demo"
 }
+
+task runLocalUploadDemo(type: JavaExec) {
+    group = "Execution"
+    description = "Run LocalUploadDemo"
+    classpath = sourceSets.main.runtimeClasspath
+    main = "com.demo.amplitude.LocalUploadDemo"
+}

@@ -7,6 +7,7 @@ import com.amplitude.Event;
 import org.json.JSONObject;
 
 import java.util.concurrent.TimeUnit;
+import java.util.HashMap;
 
 public class LocalUploadDemo {
 
@@ -65,9 +66,9 @@ public class LocalUploadDemo {
     client.logEvent(groupIdentifyEvent);
 
     // GROUPS AND GROUP PROPERTIES - Using new helper methods
-    java.util.Map<String, Object> groupsMap = new java.util.HashMap<>();
-    groupsMap.put("org", "engineering");
-    groupsMap.put("department", "sdk");
+    java.util.Map<String, Object> groupsMap = new HashMap<>();
+    groupsMap.put("new-org", "engineering");
+    groupsMap.put("new-department", "sdk");
 
     Event groupEventWithHelpers = new Event("$identify", userId)
         .setGroups(groupsMap)
@@ -75,42 +76,43 @@ public class LocalUploadDemo {
     client.logEvent(groupEventWithHelpers);
 
     Event groupIdentifyWithHelpers = new Event("$groupidentify", userId)
-        .addGroup("org", "engineering")
-        .addGroup("department", "sdk")
-        .addGroupProperty("technology", "java")
-        .addGroupProperty("location", "toronto");
+        .addGroup("new-org", "engineering")
+        .addGroup("new-department", "sdk")
+        .addGroupProperty("new-technology", "java")
+        .addGroupProperty("new-location", "toronto");
     client.logEvent(groupIdentifyWithHelpers);
 
-    // Track an event
-    client.logEvent(new Event("Test Event 1", userId));
-
     // USING NEW HELPER METHODS - Map-based approach
-    java.util.Map<String, Object> eventPropsMap = new java.util.HashMap<>();
+    java.util.Map<String, Object> eventPropsMap = new HashMap<>();
     eventPropsMap.put("method", "email");
     eventPropsMap.put("source", "web");
 
-    java.util.Map<String, Object> userPropsMap = new java.util.HashMap<>();
+    java.util.Map<String, Object> userPropsMap = new HashMap<>();
     userPropsMap.put("plan", "premium");
     userPropsMap.put("age", 30);
 
-    Event eventWithMapProps = new Event("User Login", userId)
+    Event eventWithMapProps = new Event("User Login - new way", userId)
         .setEventProperties(eventPropsMap)
         .setUserProperties(userPropsMap);
     client.logEvent(eventWithMapProps);
 
-    // USING NEW HELPER METHODS - Fluent builder approach
-    Event eventWithFluentProps = new Event("Purchase Complete", userId)
-        .addEventProperty("item_id", "SKU-123")
-        .addEventProperty("price", 29.99)
-        .addEventProperty("currency", "USD")
-        .addUserProperty("total_purchases", 5)
-        .addUserProperty("last_purchase_date", "2025-11-07");
-    client.logEvent(eventWithFluentProps);
+    // event props and user props using old JSONObject approach
+    Event eventWithJSONObjectProps = new Event("Purchase Complete - old way", userId);
+    eventWithJSONObjectProps.eventProperties = new JSONObject()
+        .put("item_id", "SKU-123")
+        .put("price", 29.99)
+        .put("currency", "USD");
+    eventWithJSONObjectProps.userProperties = new JSONObject()
+        .put("total_purchases", 5)
+        .put("last_purchase_date", "2025-11-07");
+    client.logEvent(eventWithJSONObjectProps);
+
 
     // Flush events to the server
     client.flushEvents();
+    int totalEvents = 10; //10000000;
 
-    for (int i = 0; i < 10000000; i++) {
+    for (int i = 0; i < totalEvents; i++) {
       Event ampEvent = new Event("General" + (i % 20), "Test_UserID_B" + (i % 5000));
       while (client.shouldWait(ampEvent)) {
         System.out.println("Client is busy. Waiting for log event " + ampEvent.eventType);
