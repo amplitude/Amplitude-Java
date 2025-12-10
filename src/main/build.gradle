@@ -2,6 +2,7 @@ plugins {
     id 'java-library'
     id 'maven-publish'
     id 'signing'
+    id 'com.gradleup.shadow' version '8.3.5'
 }
 
 compileJava {
@@ -40,12 +41,27 @@ java {
     withJavadocJar()
 }
 
+// ======== Shadow JAR Configuration ========
+shadowJar {
+    // Relocate org.json to shaded package
+    relocate 'org.json', 'com.amplitude.shaded.org.json'
+
+    // Use same classifier as regular JAR (no classifier = replaces main JAR)
+    archiveClassifier.set('')
+
+    // Ensure we include the sources and javadoc
+    configurations = [project.configurations.runtimeClasspath]
+}
+
 // ======== For SDK Releases ========
 publishing {
     publications {
         mavenJava(MavenPublication) {
-            artifactId = 'java-sdk'
-            from components.java
+            artifactId = 'java-sdk-shaded'
+
+            // Use shadow components to publish shaded JAR
+            project.shadow.component(it)
+
             pom {
                 name = POM_DESCRIPTION
                 description = POM_DESCRIPTION
@@ -81,5 +97,7 @@ publishing {
 }
 
 signing {
+    // Only sign when publishing to remote repository (not mavenLocal)
+    required { gradle.taskGraph.hasTask("publish") && !gradle.taskGraph.hasTask("publishToMavenLocal") }
     sign publishing.publications.mavenJava
 }
