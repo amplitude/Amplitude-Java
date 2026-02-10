@@ -24,8 +24,8 @@ module.exports = {
         "replacements": [
           {
             "files": ["gradle.properties"],
-            "from": "ARTIFACT_VERSION=.*",
-            "to": "ARTIFACT_VERSION=${nextRelease.version}",
+            "from": "VERSION_NAME=.*",
+            "to": "VERSION_NAME=${nextRelease.version}",
             "results": [
               {
                 "file": "gradle.properties",
@@ -58,12 +58,7 @@ module.exports = {
       "message": "chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
     }],
     ["@semantic-release/exec", {
-      "publishCmd": `./gradlew publishMavenJavaPublicationToMySecureRepository \
-        -PmySecureRepositoryUsername="$SECURE_REPO_USER" \
-        -PmySecureRepositoryPassword="$SECURE_REPO_PASSWORD" \
-        -Psigning.keyId="$SIGNING_KEY_ID" \
-        -Psigning.password="$SIGNING_PASSWORD" \
-        -Psigning.secretKeyRingFile="$SIGNING_SECRET_RING_FILE"`,
+      "publishCmd": "./gradlew publishAndReleaseToMavenCentral --no-configuration-cache",
     }],
   ],
 }
