@@ -3,10 +3,15 @@ name: Release
 on:
   workflow_dispatch:
     inputs:
-      dryRun:
-        description: 'Do a dry run to preview instead of a real release'
+      mode:
+        type: choice
+        description: 'Release mode'
+        options:
+          - dry-run
+          - release
+          - publish-only
         required: true
-        default: 'true'
+        default: 'dry-run'
 
 jobs:
   authorize:
@@ -54,7 +59,7 @@ jobs:
         run: ./gradlew test --info
 
       - name: Semantic Release --dry-run
-        if: ${{ github.event.inputs.dryRun == 'true'}}
+        if: ${{ github.event.inputs.mode == 'dry-run' }}
         run: |
           npx \
           -p lodash \
@@ -66,7 +71,7 @@ jobs:
           semantic-release --dry-run
 
       - name: Semantic Release
-        if: ${{ github.event.inputs.dryRun == 'false'}}
+        if: ${{ github.event.inputs.mode == 'release' }}
         run: |
           npx \
           -p lodash \
@@ -76,3 +81,7 @@ jobs:
           -p @google/semantic-release-replace-plugin@1.2.0 \
           -p @semantic-release/exec@5 \
           semantic-release
+
+      - name: Publish to Maven Central
+        if: ${{ github.event.inputs.mode == 'publish-only' }}
+        run: ./gradlew publishAndReleaseToMavenCentral --no-configuration-cache
