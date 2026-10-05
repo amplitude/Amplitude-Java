@@ -33,6 +33,10 @@ public class HttpCall {
     return this.serverUrl;
   }
 
+  HttpsURLConnection openConnection(URL url, Proxy proxy) throws IOException {
+    return (HttpsURLConnection) url.openConnection(proxy);
+  }
+
   protected Response makeRequest(List<Event> events) throws AmplitudeInvalidAPIKeyException {
     String apiUrl = getApiUrl();
     HttpsURLConnection connection;
@@ -40,7 +44,7 @@ public class HttpCall {
     int responseCode = 500;
     Response responseBody = new Response();
     try {
-      connection = (HttpsURLConnection) new URL(apiUrl).openConnection(proxy);
+      connection = openConnection(new URL(apiUrl), proxy);
       connection.setRequestMethod("POST");
       connection.setRequestProperty("Content-Type", "application/json");
       connection.setRequestProperty("Accept", "application/json");
