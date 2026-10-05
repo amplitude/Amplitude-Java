@@ -11,11 +11,20 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import javax.net.ssl.HttpsURLConnection;
 import java.io.IOException;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.net.InetSocketAddress;
 import java.net.ProtocolException;
 import java.net.Proxy;
@@ -282,6 +291,84 @@ public class HttpCallTest {
     assertEquals(502, response.code);
     assertEquals(Status.FAILED, response.status);
     verifyConnectionOption(connection);
+  }
+
+  @ParameterizedTest
+  @MethodSource("missingResponseBodyArguments")
+  public void testMissingOrMalformedResponseBody(int code, Status status, String body)
+      throws Exception {
+    HttpsURLConnection connection = mock(HttpsURLConnection.class);
+    when(connection.getOutputStream()).thenReturn(new ByteArrayOutputStream());
+    when(connection.getResponseCode()).thenReturn(code);
+    InputStream stream = body == null ? null
+        : new ByteArrayInputStream(body.getBytes(StandardCharsets.UTF_8));
+    if (code >= 400) {
+      when(connection.getErrorStream()).thenReturn(stream);
+    } else {
+      when(connection.getInputStream()).thenReturn(stream);
+    }
+    mockURLStreamHandler.setConnection(new URL(Constants.API_URL), connection);
+
+    Response response = getHttpCallFromCallMode(HttpCallMode.REGULAR)
+        .makeRequest(EventsGenerator.generateEvents(1));
+
+    assertEquals(code, response.code);
+    assertEquals(status, response.status);
+    assertTrue(response.error.contains("HTTP " + code));
+    assertTrue(response.error.contains(body == null || body.trim().isEmpty()
+        ? "empty response body" : "malformed or incomplete response body"));
+    assertNull(response.successBody);
+    assertNull(response.rateLimitBody);
+    assertFalse(response.isUserOrDeviceExceedQuote("user", "device"));
+    assertArrayEquals(new int[0], response.collectInvalidEventIndices());
+    assertDoesNotThrow(response::toString);
+  }
+
+  static Stream<Arguments> missingResponseBodyArguments() {
+    return Stream.of(200, 204, 400, 413, 429, 503).flatMap(code ->
+        Stream.of(null, "", "  ", "<html>upstream error</html>", "{}")
+            .map(body -> arguments(code, Status.getCodeStatus(code), body)));
+  }
+
+  @ParameterizedTest
+  @ValueSource(ints = {400, 429, 503})
+  public void testNullErrorBodyUsesHttpStatusForRetryAndCallbacks(int code) throws Exception {
+    HttpsURLConnection connection = mock(HttpsURLConnection.class);
+    when(connection.getOutputStream()).thenReturn(new ByteArrayOutputStream());
+    when(connection.getResponseCode()).thenReturn(code, code, 200);
+    when(connection.getErrorStream()).thenReturn(null);
+    if (code != 400) {
+      String success = getMockResponse(200, 1, 10, 1396381378123L).toString();
+      when(connection.getInputStream()).thenReturn(
+          new ByteArrayInputStream(success.getBytes(StandardCharsets.UTF_8)));
+    }
+    mockURLStreamHandler.setConnection(new URL(Constants.API_URL), connection);
+    CountDownLatch callback = new CountDownLatch(1);
+    AtomicInteger callbackCount = new AtomicInteger();
+    AtomicInteger callbackStatus = new AtomicInteger();
+    AtomicReference<String> callbackMessage = new AtomicReference<>();
+    HttpTransport transport = new HttpTransport(
+        getHttpCallFromCallMode(HttpCallMode.REGULAR), new AmplitudeCallbacks() {
+          @Override
+          public void onLogEventServerResponse(Event event, int status, String message) {
+            callbackStatus.set(status);
+            callbackMessage.set(message);
+            callbackCount.incrementAndGet();
+            callback.countDown();
+          }
+        }, new AmplitudeLog(), 0);
+    try {
+      transport.new SendEventsTask(EventsGenerator.generateEvents(1)).run();
+      assertTrue(callback.await(5, TimeUnit.SECONDS));
+      assertEquals(code == 400 ? 400 : 200, callbackStatus.get());
+      assertEquals(1, callbackCount.get());
+      verify(connection, times(code == 400 ? 1 : 3)).getResponseCode();
+      if (code == 400) {
+        assertEquals("HTTP 400: empty response body.", callbackMessage.get());
+      }
+    } finally {
+      transport.shutdown();
+    }
   }
 
   static Stream<Arguments> httpCallArguments() {

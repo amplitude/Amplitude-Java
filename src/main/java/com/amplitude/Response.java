@@ -22,6 +22,22 @@ public class Response {
     return errorMsg.matches(invalidAPIKeyError);
   }
 
+  // HTTP status remains usable even when the server sends no Amplitude response body.
+  protected static Response fromHttpStatus(int code, String error) {
+    Response res = new Response();
+    res.code = code;
+    res.status = Status.getCodeStatus(code);
+    res.error = error;
+    if (res.status == Status.INVALID) {
+      // Preserve invalid-event filtering when no per-event details are available.
+      res.invalidRequestBody = new JSONObject();
+      res.invalidRequestBody.put("missingField", "");
+      res.invalidRequestBody.put("eventsWithInvalidFields", new JSONObject());
+      res.invalidRequestBody.put("eventsWithMissingFields", new JSONObject());
+    }
+    return res;
+  }
+
   protected static Response populateResponse(JSONObject json)
       throws AmplitudeInvalidAPIKeyException {
     Response res = new Response();

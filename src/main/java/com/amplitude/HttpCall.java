@@ -75,11 +75,20 @@ public class HttpCall {
         inputStream = connection.getErrorStream();
       }
 
+      if (inputStream == null) {
+        return Response.fromHttpStatus(
+            responseCode, "HTTP " + responseCode + ": empty response body.");
+      }
+
       BufferedReader br = new BufferedReader(new InputStreamReader(inputStream));
       StringBuilder sb = new StringBuilder();
       String output;
       while ((output = br.readLine()) != null) {
         sb.append(output);
+      }
+      if (sb.toString().trim().isEmpty()) {
+        return Response.fromHttpStatus(
+            responseCode, "HTTP " + responseCode + ": empty response body.");
       }
       JSONObject responseJson = new JSONObject(sb.toString());
       responseBody = Response.populateResponse(responseJson);
@@ -93,9 +102,8 @@ public class HttpCall {
     } catch (JSONException e) {
       // Some error responses from load balancers and reverse proxies may have
       // response bodies that are not JSON (e.g. HTML, XML).
-      JSONObject decodeFailureResponse = new JSONObject();
-      decodeFailureResponse.put("code", responseCode);
-      responseBody = Response.populateResponse(decodeFailureResponse);
+      responseBody = Response.fromHttpStatus(
+          responseCode, "HTTP " + responseCode + ": malformed or incomplete response body.");
     } finally {
       if (inputStream != null) {
         try {
