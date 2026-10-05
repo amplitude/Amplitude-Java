@@ -40,6 +40,10 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 public class HttpCallTest {
 
+  // Other test classes may still have asynchronous requests to the production URLs.
+  private static final String TEST_API_URL = "https://http-call-test.invalid/2/httpapi";
+  private static final String TEST_BATCH_API_URL = "https://http-call-test.invalid/batch";
+
   private final String apiKey = "test-apiKey";
 
   private final MockURLStreamHandler mockURLStreamHandler = MockURLStreamHandler.getInstance();
@@ -307,7 +311,7 @@ public class HttpCallTest {
     } else {
       when(connection.getInputStream()).thenReturn(stream);
     }
-    mockURLStreamHandler.setConnection(new URL(Constants.API_URL), connection);
+    mockURLStreamHandler.setConnection(new URL(TEST_API_URL), connection);
 
     Response response = getHttpCallFromCallMode(HttpCallMode.REGULAR)
         .makeRequest(EventsGenerator.generateEvents(1));
@@ -342,7 +346,7 @@ public class HttpCallTest {
       when(connection.getInputStream()).thenReturn(
           new ByteArrayInputStream(success.getBytes(StandardCharsets.UTF_8)));
     }
-    mockURLStreamHandler.setConnection(new URL(Constants.API_URL), connection);
+    mockURLStreamHandler.setConnection(new URL(TEST_API_URL), connection);
     CountDownLatch callback = new CountDownLatch(1);
     AtomicInteger callbackCount = new AtomicInteger();
     AtomicInteger callbackStatus = new AtomicInteger();
@@ -373,8 +377,8 @@ public class HttpCallTest {
 
   static Stream<Arguments> httpCallArguments() {
     return Stream.of(
-        arguments(HttpCallMode.REGULAR, Constants.API_URL),
-        arguments(HttpCallMode.BATCH, Constants.BATCH_API_URL));
+        arguments(HttpCallMode.REGULAR, TEST_API_URL),
+        arguments(HttpCallMode.BATCH, TEST_BATCH_API_URL));
   }
 
   private HttpCall getHttpCallFromCallMode(HttpCallMode httpCallMode) {
@@ -384,7 +388,7 @@ public class HttpCallTest {
   private HttpCall getHttpCallFromCallMode(HttpCallMode httpCallMode, Options options, Proxy proxy) {
     return new HttpCall(
             apiKey,
-            httpCallMode == HttpCallMode.BATCH ? Constants.BATCH_API_URL : Constants.API_URL,
+            httpCallMode == HttpCallMode.BATCH ? TEST_BATCH_API_URL : TEST_API_URL,
             options, proxy);
   }
 
