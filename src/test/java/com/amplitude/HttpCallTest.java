@@ -2,12 +2,10 @@ package com.amplitude;
 
 import com.amplitude.exception.AmplitudeInvalidAPIKeyException;
 import com.amplitude.util.MockHttpsURLConnectionHelper;
-import com.amplitude.util.MockURLStreamHandler;
 import com.amplitude.util.EventsGenerator;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -42,18 +40,6 @@ public class HttpCallTest {
 
   private final String apiKey = "test-apiKey";
 
-  private final MockURLStreamHandler mockURLStreamHandler = MockURLStreamHandler.getInstance();
-
-  @BeforeEach
-  public void cleanUpHandler() {
-    try {
-      URL.setURLStreamHandlerFactory(mockURLStreamHandler);
-    } catch (Error e) {
-
-    }
-    mockURLStreamHandler.resetConnections();
-  }
-
   @ParameterizedTest
   @MethodSource("httpCallArguments")
   public void testHttpCallWithSuccessResponse(HttpCallMode httpCallMode, URL url)
@@ -65,9 +51,8 @@ public class HttpCallTest {
 
     HttpsURLConnection connection =
         MockHttpsURLConnectionHelper.getMockHttpsURLConnection(200, responseObject.toString());
-    mockURLStreamHandler.setConnection(url, connection);
 
-    HttpCall httpCall = getHttpCallFromCallMode(httpCallMode);
+    HttpCall httpCall = getHttpCallFromCallMode(httpCallMode, connection);
     List<Event> events = EventsGenerator.generateEvents(1);
     Response response = httpCall.makeRequest(events);
     assertEquals(200, response.code);
@@ -93,9 +78,8 @@ public class HttpCallTest {
     responseObject.put("error", errorMsg);
     HttpsURLConnection connection =
         MockHttpsURLConnectionHelper.getMockHttpsURLConnection(413, responseObject.toString());
-    mockURLStreamHandler.setConnection(url, connection);
 
-    HttpCall httpCall = getHttpCallFromCallMode(httpCallMode);
+    HttpCall httpCall = getHttpCallFromCallMode(httpCallMode, connection);
     List<Event> events = EventsGenerator.generateEvents(1);
     Response response = httpCall.makeRequest(events);
     assertEquals(413, response.code);
@@ -125,9 +109,8 @@ public class HttpCallTest {
     responseObject.put("events_with_missing_fields", eventsWithInvalidFieldsObject);
     HttpsURLConnection connection =
         MockHttpsURLConnectionHelper.getMockHttpsURLConnection(400, responseObject.toString());
-    mockURLStreamHandler.setConnection(url, connection);
 
-    HttpCall httpCall = getHttpCallFromCallMode(httpCallMode);
+    HttpCall httpCall = getHttpCallFromCallMode(httpCallMode, connection);
     List<Event> events = EventsGenerator.generateEvents(1);
     Response response = httpCall.makeRequest(events);
     assertEquals(400, response.code);
@@ -156,9 +139,8 @@ public class HttpCallTest {
     responseObject.put("error", errorMsg);
     HttpsURLConnection connection =
         MockHttpsURLConnectionHelper.getMockHttpsURLConnection(400, responseObject.toString());
-    mockURLStreamHandler.setConnection(url, connection);
 
-    HttpCall httpCall = getHttpCallFromCallMode(httpCallMode);
+    HttpCall httpCall = getHttpCallFromCallMode(httpCallMode, connection);
     List<Event> events = EventsGenerator.generateEvents(1);
     assertThrows(
         AmplitudeInvalidAPIKeyException.class,
@@ -190,9 +172,8 @@ public class HttpCallTest {
     responseObject.put("throttled_events", throttledEvents);
     HttpsURLConnection connection =
         MockHttpsURLConnectionHelper.getMockHttpsURLConnection(429, responseObject.toString());
-    mockURLStreamHandler.setConnection(url, connection);
 
-    HttpCall httpCall = getHttpCallFromCallMode(httpCallMode);
+    HttpCall httpCall = getHttpCallFromCallMode(httpCallMode, connection);
     List<Event> events = EventsGenerator.generateEvents(1);
     Response response = httpCall.makeRequest(events);
     assertEquals(429, response.code);
@@ -220,8 +201,7 @@ public class HttpCallTest {
       throws IOException, AmplitudeInvalidAPIKeyException {
     HttpsURLConnection connection = mock(HttpsURLConnection.class);
     when(connection.getOutputStream()).thenThrow(new IOException("test IOException thrown"));
-    mockURLStreamHandler.setConnection(url, connection);
-    HttpCall httpCall = getHttpCallFromCallMode(httpCallMode);
+    HttpCall httpCall = getHttpCallFromCallMode(httpCallMode, connection);
     List<Event> events = EventsGenerator.generateEvents(1);
     Response response = httpCall.makeRequest(events);
     assertEquals(408, response.code);
@@ -244,8 +224,7 @@ public class HttpCallTest {
     JSONObject responseObject = getMockResponse(200, 1, payloadSizeBytes, serverUploadTime);
     HttpsURLConnection connection =
             MockHttpsURLConnectionHelper.getMockHttpsURLConnection(200, responseObject.toString());
-    mockURLStreamHandler.setConnection(url, connection);
-    HttpCall httpCall = getHttpCallFromCallMode(httpCallMode, options, Proxy.NO_PROXY);
+    HttpCall httpCall = getHttpCallFromCallMode(httpCallMode, options, Proxy.NO_PROXY, connection);
     List<Event> events = EventsGenerator.generateEvents(1);
 
     Response response = httpCall.makeRequest(events);
@@ -266,15 +245,14 @@ public class HttpCallTest {
     JSONObject responseObject = getMockResponse(200, 1, payloadSizeBytes, serverUploadTime);
     HttpsURLConnection connection =
             MockHttpsURLConnectionHelper.getMockHttpsURLConnection(200, responseObject.toString());
-    mockURLStreamHandler.setConnection(url, connection);
-    HttpCall httpCall = getHttpCallFromCallMode(httpCallMode, null, new Proxy(Proxy.Type.HTTP, new InetSocketAddress("0.0.0.0", 443)));
+    HttpCall httpCall = getHttpCallFromCallMode(httpCallMode, null, new Proxy(Proxy.Type.HTTP, new InetSocketAddress("0.0.0.0", 443)), connection);
     List<Event> events = EventsGenerator.generateEvents(1);
     Response response = httpCall.makeRequest(events);
 
     assertEquals(200, response.code);
     assertEquals(Status.SUCCESS, response.status);
     verifyConnectionOption(connection);
-    assertTrue(connection.usingProxy());
+    verify(httpCall).openConnection(url, new Proxy(Proxy.Type.HTTP, new InetSocketAddress("0.0.0.0", 443)));
   }
 
   @ParameterizedTest
@@ -283,8 +261,7 @@ public class HttpCallTest {
           throws IOException, AmplitudeInvalidAPIKeyException {
     HttpsURLConnection connection =
             MockHttpsURLConnectionHelper.getMockHttpsURLConnection(502, "<Response></Response>");
-    mockURLStreamHandler.setConnection(url, connection);
-    HttpCall httpCall = getHttpCallFromCallMode(httpCallMode, null, new Proxy(Proxy.Type.HTTP, new InetSocketAddress("0.0.0.0", 443)));
+    HttpCall httpCall = getHttpCallFromCallMode(httpCallMode, null, new Proxy(Proxy.Type.HTTP, new InetSocketAddress("0.0.0.0", 443)), connection);
     List<Event> events = EventsGenerator.generateEvents(1);
     Response response = httpCall.makeRequest(events);
 
@@ -307,9 +284,8 @@ public class HttpCallTest {
     } else {
       when(connection.getInputStream()).thenReturn(stream);
     }
-    mockURLStreamHandler.setConnection(new URL(Constants.API_URL), connection);
 
-    Response response = getHttpCallFromCallMode(HttpCallMode.REGULAR)
+    Response response = getHttpCallFromCallMode(HttpCallMode.REGULAR, connection)
         .makeRequest(EventsGenerator.generateEvents(1));
 
     assertEquals(code, response.code);
@@ -342,13 +318,12 @@ public class HttpCallTest {
       when(connection.getInputStream()).thenReturn(
           new ByteArrayInputStream(success.getBytes(StandardCharsets.UTF_8)));
     }
-    mockURLStreamHandler.setConnection(new URL(Constants.API_URL), connection);
     CountDownLatch callback = new CountDownLatch(1);
     AtomicInteger callbackCount = new AtomicInteger();
     AtomicInteger callbackStatus = new AtomicInteger();
     AtomicReference<String> callbackMessage = new AtomicReference<>();
     HttpTransport transport = new HttpTransport(
-        getHttpCallFromCallMode(HttpCallMode.REGULAR), new AmplitudeCallbacks() {
+        getHttpCallFromCallMode(HttpCallMode.REGULAR, connection), new AmplitudeCallbacks() {
           @Override
           public void onLogEventServerResponse(Event event, int status, String message) {
             callbackStatus.set(status);
@@ -377,15 +352,18 @@ public class HttpCallTest {
         arguments(HttpCallMode.BATCH, Constants.BATCH_API_URL));
   }
 
-  private HttpCall getHttpCallFromCallMode(HttpCallMode httpCallMode) {
-    return getHttpCallFromCallMode(httpCallMode, null, Proxy.NO_PROXY);
+  private HttpCall getHttpCallFromCallMode(HttpCallMode httpCallMode, HttpsURLConnection connection)
+      throws IOException {
+    return getHttpCallFromCallMode(httpCallMode, null, Proxy.NO_PROXY, connection);
   }
 
-  private HttpCall getHttpCallFromCallMode(HttpCallMode httpCallMode, Options options, Proxy proxy) {
-    return new HttpCall(
-            apiKey,
-            httpCallMode == HttpCallMode.BATCH ? Constants.BATCH_API_URL : Constants.API_URL,
-            options, proxy);
+  private HttpCall getHttpCallFromCallMode(
+      HttpCallMode httpCallMode, Options options, Proxy proxy, HttpsURLConnection connection)
+      throws IOException {
+    String url = httpCallMode == HttpCallMode.BATCH ? Constants.BATCH_API_URL : Constants.API_URL;
+    HttpCall httpCall = spy(new HttpCall(apiKey, url, options, proxy));
+    doReturn(connection).when(httpCall).openConnection(new URL(url), proxy);
+    return httpCall;
   }
 
   private void verifyConnectionOption(HttpsURLConnection connection) throws ProtocolException {
