@@ -1,3 +1,10 @@
+## [1.13.1](https://github.com/amplitude/Amplitude-Java/compare/v1.13.0...v1.13.1) (2026-10-06)
+
+
+### Bug Fixes
+
+* handle missing and malformed HTTP response bodies ([#121](https://github.com/amplitude/Amplitude-Java/issues/121)) ([7c69301](https://github.com/amplitude/Amplitude-Java/commit/7c6930166b4651a322ed612c4665e665b1581ac1))
+
 # [1.13.0](https://github.com/amplitude/Amplitude-Java/compare/v1.12.5...v1.13.0) (2025-12-09)
 
 
