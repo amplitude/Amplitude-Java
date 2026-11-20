@@ -9,6 +9,8 @@ import java.util.Map;
 import java.util.UUID;
 
 public class Event {
+  private static final AmplitudeLog LOGGER = new AmplitudeLog();
+
   /** A unique identifier for your event. */
   public String eventType;
 
@@ -420,7 +422,7 @@ public class Event {
         event.put("ingestion_metadata", ingestionMetadata.toJSONObject());
       }
     } catch (JSONException e) {
-      e.printStackTrace();
+      LOGGER.error("Event", "Could not serialize all event fields.");
     }
     return event;
   }

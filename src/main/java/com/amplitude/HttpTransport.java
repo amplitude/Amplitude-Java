@@ -169,7 +169,7 @@ class HttpTransport {
         try {
           retryThreadPool.execute(task);
         } catch (RejectedExecutionException e) {
-          logger.error("Failed init retry thread", Utils.getStackTrace(e));
+          logger.error("Failed init retry thread", e.getClass().getSimpleName());
           triggerEventCallbacks(task.events, 0, "Failed init retry thread");
         }
       }
@@ -397,7 +397,7 @@ class HttpTransport {
           }
 
         } catch (Exception e) {
-          logger.error("RETRY", Utils.getStackTrace(e));
+          logger.error("RETRY", e.getClass().getSimpleName());
           triggerEventCallbacks(events, 0, "Retry threads Exception.");
           Thread.currentThread().interrupt();
         }
@@ -451,8 +451,7 @@ class HttpTransport {
       } catch (Exception exception) {
         callbackMessage =
                 "Error sending events due to the exception: " + exception + ". Message: " + exception.getMessage();
-        logger.error("Flush Thread Error", Utils.getStackTrace(exception));
-        logger.error("Error event payload", events.toString());
+        logger.error("Flush Thread Error", exception.getClass().getSimpleName());
       } finally {
         if (needCallback) {
           triggerEventCallbacks(events, statusCode, callbackMessage);

@@ -1,12 +1,13 @@
 package com.demo.amplitude;
 
 import com.amplitude.*;
+import org.springframework.http.MediaType;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.bind.annotation.RequestMapping;
 
 @RestController
 public class DemoController {
-  @RequestMapping("/")
+  @PostMapping(value = "/", consumes = MediaType.APPLICATION_JSON_VALUE)
   public String index() {
     Amplitude amplitude = Amplitude.getInstance("INSTANCE_NAME");
     amplitude.init("8e07b9d451a7d07bd33f6e9ba5870f21");
