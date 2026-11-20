@@ -38,10 +38,13 @@ public class Options {
 
     public JSONObject toJsonObject() {
         JSONObject eventOptions = new JSONObject();
-        try {
-            if (minIdLength != null) eventOptions.put("min_id_length", minIdLength);
-        } catch (JSONException e) {
-            e.printStackTrace();
+        Integer length = minIdLength;
+        if (length != null) {
+            try {
+                eventOptions.put("min_id_length", length.intValue());
+            } catch (JSONException ignored) {
+                // Omit min_id_length if it cannot be serialized.
+            }
         }
         return eventOptions;
     }
